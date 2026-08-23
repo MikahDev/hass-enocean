@@ -1,0 +1,131 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Passerelle EnOcean",
+        "description": "Selectionnez le port serie du transceiver USB EnOcean. Preferez le chemin stable /dev/serial/by-id.",
+        "data": {
+          "device": "Port serie"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer la passerelle EnOcean",
+        "description": "Selectionnez le nouveau port serie du transceiver USB EnOcean.",
+        "data": {
+          "device": "Port serie"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible d'ouvrir le port serie ou le transceiver n'a pas repondu. Verifiez le chemin et qu'aucun autre module ou processus n'occupe le port."
+    },
+    "abort": {
+      "single_instance_allowed": "Une seule passerelle EnOcean est prise en charge.",
+      "reconfigure_successful": "Passerelle reconfiguree."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Appareils EnOcean",
+        "menu_options": {
+          "inbox": "Boite de reception radio",
+          "add_manual": "Ajouter un appareil manuellement",
+          "manage": "Gerer les appareils configures",
+          "import_devices": "Importer un inventaire",
+          "export_devices": "Exporter une sauvegarde"
+        }
+      },
+      "inbox": {
+        "title": "Boite de reception radio",
+        "description": "Emetteurs entendus recemment et non configures. Un profil n'est affiche que si l'appareil l'a declare dans un telegramme d'appairage ; sinon choisissez l'EEP vous-meme a l'ecran suivant.",
+        "data": {
+          "address": "Emetteur recu"
+        }
+      },
+      "add_manual": {
+        "title": "Ajouter un appareil",
+        "description": "Saisissez l'adresse radio exacte a 8 chiffres (les zeros initiaux comptent) et l'EEP de l'appareil. Un emetteur passif n'a pas besoin d'etre re-appaire.",
+        "data": {
+          "address": "Adresse radio (8 chiffres hexadecimaux)",
+          "eep": "Profil EEP",
+          "name": "Nom"
+        }
+      },
+      "actuator": {
+        "title": "Reglages de l'actionneur",
+        "description": "Appareil {address}. Le sender ID est l'identite de controleur deja connue de l'actionneur ; il est propose depuis le Base ID du transceiver ({base_id}) et doit rester dans la plage Base ID +127. Il n'est jamais attribue automatiquement. Le canal radio 0 correspond au Canal 1 de l'appareil.",
+        "data": {
+          "sender_id": "Sender ID du controleur",
+          "channel": "Canal radio (0 = Canal 1)"
+        }
+      },
+      "manage": {
+        "title": "Appareils configures",
+        "data": {
+          "address": "Appareil"
+        }
+      },
+      "remove_confirm": {
+        "title": "Supprimer l'appareil",
+        "description": "Supprimer {name} ({address}) ? Ses entites seront supprimees. L'appareil physique n'est pas modifie et aucun teach-out n'est envoye."
+      },
+      "import_devices": {
+        "title": "Importer un inventaire",
+        "description": "Collez un document JSON : {\"version\": 1, \"devices\": [{\"address\": \"050A5C20\", \"eep\": \"D2-01-0F\", \"name\": \"Relais\", \"sender_id\": \"FF974100\", \"channel\": 0}]}. Le fichier entier est valide d'abord ; rien n'est enregistre si un enregistrement est invalide.\n\n{detail}",
+        "data": {
+          "document": "Document JSON"
+        }
+      },
+      "import_confirm": {
+        "title": "Apercu de l'import",
+        "description": "Simulation : {count} appareil(s) seront ajoutes.\n\n{summary}\n\nValidez pour enregistrer, ou revenez en arriere pour annuler."
+      },
+      "export_devices": {
+        "title": "Exporter une sauvegarde",
+        "description": "Copiez ce document et conservez-le en lieu sur. Il contient la configuration de reprise et aucun secret.\n\n```\n{export_json}\n```"
+      }
+    },
+    "error": {
+      "invalid_address": "Saisissez exactement 8 chiffres hexadecimaux, en conservant les zeros initiaux.",
+      "duplicate_address": "Cette adresse est deja configuree.",
+      "invalid_sender": "Saisissez le sender ID sous forme de 8 chiffres hexadecimaux.",
+      "sender_out_of_range": "Le sender ID doit rester dans la plage du Base ID du transceiver (Base ID a Base ID +127).",
+      "import_invalid": "Le document a ete rejete ; rien n'a ete enregistre. Voir les details ci-dessus."
+    },
+    "abort": {
+      "inbox_empty": "Aucun emetteur non configure n'a encore ete entendu.",
+      "no_devices": "Aucun appareil n'est configure.",
+      "not_loaded": "La passerelle n'est pas demarree."
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "pressed": "\"{subtype}\" appuye",
+      "released": "Bouton relache"
+    },
+    "trigger_subtype": {
+      "ai": "AI (bascule A, bas)",
+      "ao": "AO (bascule A, haut)",
+      "bi": "BI (bascule B, bas)",
+      "bo": "BO (bascule B, haut)"
+    }
+  },
+  "issues": {
+    "serial_disconnected": {
+      "title": "Transceiver EnOcean deconnecte",
+      "description": "La connexion serie vers {port} a ete perdue. L'integration reessaie automatiquement. Verifiez que le transceiver USB est branche et qu'aucun autre processus n'a pris le port."
+    }
+  },
+  "exceptions": {
+    "not_connected": {
+      "message": "La passerelle EnOcean n'est pas connectee."
+    },
+    "invalid_sender": {
+      "message": "Le sender ID {sender_id} est hors de la plage du Base ID du transceiver ; commande non envoyee."
+    },
+    "command_not_acknowledged": {
+      "message": "Le transceiver n'a pas acquitte la commande pour {address}."
+    }
+  }
+}

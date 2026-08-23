@@ -1,0 +1,18 @@
+EnOcean Direct integration for Home Assistant
+Copyright 2026 Michael Villeprat
+
+This product depends on enocean-async (https://github.com/henningkerstan/enocean-async),
+licensed under the Apache License 2.0. It is used as a library dependency; no source
+is vendored into this repository.
+
+EnOcean Equipment Profile (EEP) field layouts for D5-00-01, F6-02-01, F6-02-02 and
+D2-01-0F were independently transcribed from the publicly available EnOcean Alliance
+EEP specification. No third-party EEP database is distributed with this project.
+
+The projects listed below were studied as behavioural references only; no code was
+copied from them:
+- home-assistant/core enocean integration (Apache-2.0)
+- szymkiewiczmathieu/ha_enocean_custom (Apache-2.0)
+- ChristopheHD/HA_enoceanmqtt-addon and overlay (GPL-3.0)
+- ESDN83/HA_enoceanmqtt-addon-ui (MIT)
+- NextDom/plugin-enocean (GPL family)

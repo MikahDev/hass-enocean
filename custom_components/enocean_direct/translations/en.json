@@ -1,0 +1,131 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "EnOcean gateway",
+        "description": "Select the serial port of the EnOcean USB transceiver. Prefer the stable /dev/serial/by-id path.",
+        "data": {
+          "device": "Serial port"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure EnOcean gateway",
+        "description": "Select the new serial port of the EnOcean USB transceiver.",
+        "data": {
+          "device": "Serial port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot open the serial port or the transceiver did not answer. Check the path and make sure no other add-on or process owns the port."
+    },
+    "abort": {
+      "single_instance_allowed": "Only one EnOcean gateway is supported.",
+      "reconfigure_successful": "Gateway reconfigured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "EnOcean devices",
+        "menu_options": {
+          "inbox": "Radio inbox",
+          "add_manual": "Add a device manually",
+          "manage": "Manage configured devices",
+          "import_devices": "Import an inventory",
+          "export_devices": "Export a backup"
+        }
+      },
+      "inbox": {
+        "title": "Radio inbox",
+        "description": "Senders heard recently that are not configured yet. A profile is only shown when the device declared it in a teach-in telegram; otherwise select the EEP yourself on the next screen.",
+        "data": {
+          "address": "Received sender"
+        }
+      },
+      "add_manual": {
+        "title": "Add a device",
+        "description": "Enter the exact 8-digit radio address (leading zeroes matter) and the device EEP. A passive transmitter does not need to be re-paired.",
+        "data": {
+          "address": "Radio address (8 hex digits)",
+          "eep": "EEP profile",
+          "name": "Name"
+        }
+      },
+      "actuator": {
+        "title": "Actuator settings",
+        "description": "Device {address}. The sender ID is the controller identity the actuator already knows; it is proposed from the transceiver Base ID ({base_id}) and must stay within Base ID +127. It is never allocated automatically. Radio channel 0 is Channel 1 on the device.",
+        "data": {
+          "sender_id": "Controller sender ID",
+          "channel": "Radio channel (0 = Channel 1)"
+        }
+      },
+      "manage": {
+        "title": "Configured devices",
+        "data": {
+          "address": "Device"
+        }
+      },
+      "remove_confirm": {
+        "title": "Remove device",
+        "description": "Remove {name} ({address})? Its entities will be deleted. The physical device is not touched and no teach-out is sent."
+      },
+      "import_devices": {
+        "title": "Import an inventory",
+        "description": "Paste a JSON document: {\"version\": 1, \"devices\": [{\"address\": \"050A5C20\", \"eep\": \"D2-01-0F\", \"name\": \"Relay\", \"sender_id\": \"FF974100\", \"channel\": 0}]}. The whole file is validated first; nothing is saved if any record is invalid.\n\n{detail}",
+        "data": {
+          "document": "JSON document"
+        }
+      },
+      "import_confirm": {
+        "title": "Import preview",
+        "description": "Dry run: {count} device(s) will be added.\n\n{summary}\n\nSubmit to save, or go back to cancel."
+      },
+      "export_devices": {
+        "title": "Export backup",
+        "description": "Copy this document and store it safely. It contains recovery configuration and no secrets.\n\n```\n{export_json}\n```"
+      }
+    },
+    "error": {
+      "invalid_address": "Enter exactly 8 hexadecimal digits, keeping leading zeroes.",
+      "duplicate_address": "This address is already configured.",
+      "invalid_sender": "Enter the sender ID as 8 hexadecimal digits.",
+      "sender_out_of_range": "The sender ID must be within the transceiver Base ID range (Base ID to Base ID +127).",
+      "import_invalid": "The document was rejected; nothing was saved. See the details above."
+    },
+    "abort": {
+      "inbox_empty": "No unconfigured senders have been heard yet.",
+      "no_devices": "No devices are configured.",
+      "not_loaded": "The gateway is not running."
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "pressed": "\"{subtype}\" pressed",
+      "released": "Button released"
+    },
+    "trigger_subtype": {
+      "ai": "AI (rocker A, bottom)",
+      "ao": "AO (rocker A, top)",
+      "bi": "BI (rocker B, bottom)",
+      "bo": "BO (rocker B, top)"
+    }
+  },
+  "issues": {
+    "serial_disconnected": {
+      "title": "EnOcean transceiver disconnected",
+      "description": "The serial connection to {port} was lost. The integration keeps retrying automatically. Check that the USB transceiver is plugged in and that no other process has taken the port."
+    }
+  },
+  "exceptions": {
+    "not_connected": {
+      "message": "The EnOcean gateway is not connected."
+    },
+    "invalid_sender": {
+      "message": "Sender ID {sender_id} is outside the transceiver Base ID range; command not sent."
+    },
+    "command_not_acknowledged": {
+      "message": "The transceiver did not acknowledge the command for {address}."
+    }
+  }
+}
