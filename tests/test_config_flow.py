@@ -53,6 +53,22 @@ async def test_user_flow_cannot_connect(
     assert dongle.transport.closed  # descriptor released after failed validation
 
 
+async def test_reconfigure_updates_path(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    new_path = "/dev/serial/by-id/usb-FTDI_NEW-if00-port0"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_DEVICE_PATH: new_path}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_DEVICE_PATH] == new_path
+
+
 async def test_single_instance(hass: HomeAssistant, dongle: FakeDongle) -> None:
     entry = make_entry(hass)
     assert await setup_entry(hass, entry)

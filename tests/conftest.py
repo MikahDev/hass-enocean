@@ -145,9 +145,7 @@ def dongle(monkeypatch: pytest.MonkeyPatch) -> FakeDongle:
     import enocean_async.gateway as gateway_module
 
     fake = FakeDongle()
-    monkeypatch.setattr(
-        gateway_module.serialx, "create_serial_connection", fake.create
-    )
+    monkeypatch.setattr(gateway_module.serialx, "create_serial_connection", fake.create)
     return fake
 
 
@@ -162,22 +160,18 @@ def erp1_frame(
     rssi: int = 45,
     destination: int | None = None,
 ) -> bytes:
-    from enocean_async.address import BaseAddress, BroadcastAddress, EURID
+    from enocean_async.address import EURID, BaseAddress, BroadcastAddress
     from enocean_async.protocol.erp1.rorg import RORG
     from enocean_async.protocol.erp1.telegram import ERP1Telegram
 
-    sender_address = (
-        EURID(sender) if sender <= 0xFF7FFFFF else BaseAddress(sender)
-    )
+    sender_address = EURID(sender) if sender <= 0xFF7FFFFF else BaseAddress(sender)
     telegram = ERP1Telegram(
         rorg=RORG(rorg),
         telegram_data=bytes(payload),
         sender=sender_address,
         status=status,
         rssi=rssi,
-        destination=(
-            BroadcastAddress() if destination is None else EURID(destination)
-        ),
+        destination=(BroadcastAddress() if destination is None else EURID(destination)),
     )
     return telegram.to_esp3().to_bytes()
 

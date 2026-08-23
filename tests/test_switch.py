@@ -1,7 +1,6 @@
 """D2-01-0F switch: exact TX bytes, ACK handling, confirmed vs assumed state."""
 
 import pytest
-
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
@@ -24,10 +23,10 @@ ENTITY = "switch.pilot_relay"
 # radio channel 0, sender FF974100 (the validated historical association),
 # destination 050A5C20.
 #   RORG  CMD  DV<<5|IO  OV    sender........       status
-ON_DATA = bytes.fromhex("D2" "01" "00" "64" "FF974100" "00")
-OFF_DATA = bytes.fromhex("D2" "01" "00" "00" "FF974100" "00")
+ON_DATA = bytes.fromhex("D2010064FF97410000")
+OFF_DATA = bytes.fromhex("D2010000FF97410000")
 # optional: sub_tel_num 3, destination, max dBm, no security
-EXPECTED_OPTIONAL = bytes.fromhex("03" "050A5C20" "FF" "00")
+EXPECTED_OPTIONAL = bytes.fromhex("03050A5C20FF00")
 
 
 async def _setup(hass: HomeAssistant) -> None:

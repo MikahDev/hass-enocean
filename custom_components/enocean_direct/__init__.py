@@ -66,9 +66,7 @@ def _sync_device_registry(
             manufacturer="EnOcean",
             model=record.eep,
         )
-    configured = {
-        (DOMAIN, address) for address in hub.devices
-    }
+    configured = {(DOMAIN, address) for address in hub.devices}
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         if not (device.identifiers & configured):
             registry.async_remove_device(device.id)

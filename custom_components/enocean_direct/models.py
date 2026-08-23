@@ -140,9 +140,7 @@ def validate_record(
             except AddressError as err:
                 errors.append(f"{address}: {err}")
             else:
-                if base_id is not None and not sender_in_base_range(
-                    sender_id, base_id
-                ):
+                if base_id is not None and not sender_in_base_range(sender_id, base_id):
                     errors.append(
                         f"{address}: sender_id {sender_id} outside valid range "
                         f"{base_id}..+{SENDER_OFFSET_MAX}"
@@ -194,7 +192,7 @@ def parse_import(
 
     if not isinstance(doc, dict) or doc.get("version") != IMPORT_SCHEMA_VERSION:
         return ImportResult(
-            [], [f"expected an object with \"version\": {IMPORT_SCHEMA_VERSION}"]
+            [], [f'expected an object with "version": {IMPORT_SCHEMA_VERSION}']
         )
     raw_devices = doc.get("devices")
     if not isinstance(raw_devices, list) or not raw_devices:

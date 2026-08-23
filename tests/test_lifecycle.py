@@ -96,9 +96,7 @@ async def test_usb_disconnect_and_recover(
     assert hass.states.get(ENTITY).state == "on"
 
 
-async def test_ha_stop_releases_port(
-    hass: HomeAssistant, dongle: FakeDongle
-) -> None:
+async def test_ha_stop_releases_port(hass: HomeAssistant, dongle: FakeDongle) -> None:
     entry = make_entry(hass, [CONTACT])
     assert await setup_entry(hass, entry)
     hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)

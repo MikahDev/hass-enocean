@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlowWithReload
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -42,9 +41,7 @@ from .models import (
 )
 
 _EEP_SELECTOR = SelectSelector(
-    SelectSelectorConfig(
-        options=list(SUPPORTED_EEPS), mode=SelectSelectorMode.DROPDOWN
-    )
+    SelectSelectorConfig(options=list(SUPPORTED_EEPS), mode=SelectSelectorMode.DROPDOWN)
 )
 
 
@@ -189,9 +186,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             except AddressError:
                 errors[KEY_SENDER_ID] = "invalid_sender"
             else:
-                if base_id is not None and not sender_in_base_range(
-                    sender_id, base_id
-                ):
+                if base_id is not None and not sender_in_base_range(sender_id, base_id):
                     errors[KEY_SENDER_ID] = "sender_out_of_range"
             if not errors:
                 record = DeviceRecord(
@@ -256,9 +251,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         target = next(
-            raw
-            for raw in self._raw_devices
-            if raw[KEY_ADDRESS] == self._remove_address
+            raw for raw in self._raw_devices if raw[KEY_ADDRESS] == self._remove_address
         )
         if user_input is not None:
             remaining = [

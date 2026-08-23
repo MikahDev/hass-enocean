@@ -22,10 +22,10 @@ from enocean_async import (
 from enocean_async.protocol.erp1.rorg import RORG
 from enocean_async.protocol.esp3.response import ResponseCode
 from enocean_async.semantics.instructions.switch import SetSwitchOutput
-
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr, issue_registry as ir
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import (
@@ -33,7 +33,6 @@ from .const import (
     CONF_DEVICE_PATH,
     CONF_DEVICES,
     DOMAIN,
-    EEP_ACTUATOR,
     EEP_CONTACT,
     EEP_ROCKERS,
     EVENT_BUTTON,
@@ -107,9 +106,7 @@ class EnOceanHub:
                     name=record.name,
                 )
             except ValueError as err:
-                _LOGGER.error(
-                    "Could not register actuator %s: %s", record.address, err
-                )
+                _LOGGER.error("Could not register actuator %s: %s", record.address, err)
 
     async def async_stop(self) -> None:
         """Close the serial connection. Safe to call more than once."""

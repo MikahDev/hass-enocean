@@ -43,9 +43,7 @@ async def test_teach_in_does_not_change_state(
     assert hass.states.get(ENTITY).state == "off"  # unchanged
 
 
-async def test_unknown_sender_ignored(
-    hass: HomeAssistant, dongle: FakeDongle
-) -> None:
+async def test_unknown_sender_ignored(hass: HomeAssistant, dongle: FakeDongle) -> None:
     entry = make_entry(hass, [CONTACT])
     assert await setup_entry(hass, entry)
     before = len(hass.states.async_entity_ids())
