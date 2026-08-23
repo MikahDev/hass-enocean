@@ -18,6 +18,7 @@ from .conftest import (
     f6_frame,
     make_entry,
     setup_entry,
+    ute_teach_in_frame,
 )
 
 
@@ -136,11 +137,41 @@ async def test_inbox_lists_and_prefills(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
 
-    # once configured, the inbox no longer offers it
+    # saving reloaded the entry; the inbox is in-memory by design and resets,
+    # so the configured contact can never reappear in it
     result = await _menu(hass, entry, "inbox")
-    if result["type"] is FlowResultType.FORM:
-        options = result["data_schema"].schema["address"].config["options"]
-        assert all(opt["value"] != "0084ACF3" for opt in options)
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "inbox_empty"
+
+
+async def test_inbox_shows_ute_declared_eep(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """A UTE teach-in declares its EEP; the inbox must show it. It is never
+    acknowledged (no teach-in mode exists)."""
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    dongle.inject(ute_teach_in_frame(0x050A5C20, 0xD2, 0x01, 0x0F))
+    await hass.async_block_till_done()
+    assert dongle.sent_radio == []  # no UTE response transmitted
+
+    result = await _menu(hass, entry, "inbox")
+    options = result["data_schema"].schema["address"].config["options"]
+    labels = {opt["value"]: opt["label"] for opt in options}
+    assert "D2-01-0F" in labels["050A5C20"]
+
+
+async def test_add_manual_rejects_base_range_address(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    result = await _menu(hass, entry, "add_manual")
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"address": "FF900000", "eep": "D2-01-0F", "name": "Bad"},
+    )
+    assert result["errors"] == {"address": "not_eurid"}
 
 
 async def test_inbox_empty_aborts(hass: HomeAssistant, dongle: FakeDongle) -> None:
@@ -218,6 +249,11 @@ async def test_export_contains_devices_no_secrets(
     doc = json.loads(document)
     assert doc["gateway"]["base_id"] == BASE_ID_HEX
     assert len(doc["devices"]) == 2
+    # only recovery configuration keys, nothing else
+    allowed = {"address", "eep", "name", "sender_id", "channel"}
+    for device in doc["devices"]:
+        assert set(device) <= allowed
+    assert set(doc) == {"version", "gateway", "devices"}
     result = await hass.config_entries.options.async_configure(result["flow_id"], {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
 

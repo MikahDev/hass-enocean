@@ -20,6 +20,7 @@ from enocean_async import (
     device_type_for_eep,
 )
 from enocean_async.protocol.erp1.rorg import RORG
+from enocean_async.protocol.erp1.ute import UTEMessage
 from enocean_async.protocol.esp3.response import ResponseCode
 from enocean_async.semantics.instructions.switch import SetSwitchOutput
 from homeassistant.core import HomeAssistant, callback
@@ -115,6 +116,7 @@ class EnOceanHub:
             await self.gateway.stop()
             self.gateway = None
         self.connected = False
+        ir.async_delete_issue(self.hass, DOMAIN, ISSUE_SERIAL_DISCONNECTED)
 
     # ------------------------------------------------------------------
     # incoming
@@ -129,6 +131,16 @@ class EnOceanHub:
         if erp1.rorg == RORG.RORG_1BS and erp1.is_learning_telegram:
             # 1BS carries no EEP data, but D5-00-01 is the only 1BS profile.
             declared_eep = EEP_CONTACT
+        elif erp1.rorg == RORG.RORG_UTE:
+            # A UTE teach-in explicitly declares the device's EEP. Parsed for
+            # inbox display only; it is never acknowledged (no teach-in mode).
+            try:
+                ute = UTEMessage.from_erp1(erp1)
+                declared_eep = (
+                    f"{ute.eep.rorg:02X}-{ute.eep.func:02X}-{ute.eep.type:02X}"
+                )
+            except ValueError, IndexError:
+                declared_eep = None
         record = self.devices.get(address)
         self.inbox.record(
             address=address,
@@ -238,13 +250,24 @@ class EnOceanHub:
                 translation_key="invalid_sender",
                 translation_placeholders={"sender_id": record.sender_id},
             )
-        result = await gateway.send_command(
-            EURID(int(record.address, 16)),
-            SetSwitchOutput(
-                output_value=100 if turn_on else 0,
-                entity_id=str(record.channel),
-            ),
-            sender=sender,
-        )
+        try:
+            result = await gateway.send_command(
+                EURID(int(record.address, 16)),
+                SetSwitchOutput(
+                    output_value=100 if turn_on else 0,
+                    entity_id=str(record.channel),
+                ),
+                sender=sender,
+            )
+        except ValueError as err:
+            # e.g. address invalid or device not registered with the library
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="send_failed",
+                translation_placeholders={
+                    "address": record.address,
+                    "error": str(err),
+                },
+            ) from err
         response = result.response
         return response is not None and response.return_code == ResponseCode.OK

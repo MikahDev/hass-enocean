@@ -186,6 +186,14 @@ def f6_frame(sender: int, db0: int, status: int = 0x30, **kwargs) -> bytes:
     return erp1_frame(0xF6, [db0], sender, status=status, **kwargs)
 
 
+def ute_teach_in_frame(
+    sender: int, rorg: int, func: int, type_: int, **kwargs
+) -> bytes:
+    """UTE teach-in query declaring an EEP (bidirectional, response expected)."""
+    payload = [0b10000000, 0x01, 0x46, 0x00, type_, func, rorg]
+    return erp1_frame(0xD4, payload, sender, **kwargs)
+
+
 def d2_status_frame(sender: int, channel: int, output_value: int, **kwargs) -> bytes:
     """D2-01 CMD 0x4 Actuator Status Response."""
     payload = [0x04, channel & 0x1F, output_value & 0x7F]

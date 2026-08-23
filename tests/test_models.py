@@ -124,6 +124,15 @@ def test_validate_contact_rejects_sender() -> None:
     assert any("does not apply" in error for error in errors)
 
 
+def test_validate_rejects_non_eurid_device_address() -> None:
+    # FF900000 is in the base/sender range: valid sender, invalid device
+    record, errors = validate_record(
+        {"address": "FF900000", "eep": "D5-00-01"}, BASE, set()
+    )
+    assert record is None
+    assert any("not a device address" in error for error in errors)
+
+
 def test_validate_unknown_eep_and_duplicate() -> None:
     record, errors = validate_record(
         {"address": "0084ACF3", "eep": "A5-02-05"}, BASE, set()
@@ -137,7 +146,8 @@ def test_validate_unknown_eep_and_duplicate() -> None:
 
 
 def test_validate_channel_bounds() -> None:
-    for bad in (-1, 30, "0", True):
+    # D2-01-0F is single-channel: only radio channel 0 is valid
+    for bad in (-1, 1, 30, "0", True):
         record, errors = validate_record(
             {
                 "address": "050A5C20",

@@ -21,8 +21,11 @@ EEP_ROCKERS = ("F6-02-01", "F6-02-02")
 EEP_ACTUATOR = "D2-01-0F"
 SUPPORTED_EEPS = (EEP_CONTACT, *EEP_ROCKERS, EEP_ACTUATOR)
 
-# D2-01 I/O channel field: 0x00-0x1D are individual channels.
-MAX_CHANNEL = 0x1D
+# Radio channels per supported actuator EEP (D2-01-0F is single-channel).
+EEP_CHANNEL_COUNT = {EEP_ACTUATOR: 1}
+
+# Device (radio) addresses must be EURIDs; base-range addresses are senders.
+EURID_MAX = 0xFF7FFFFF
 
 # Sender IDs must be within base ID .. base ID + 127.
 SENDER_OFFSET_MAX = 127

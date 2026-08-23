@@ -10,7 +10,15 @@ from homeassistant.core import HomeAssistant
 from . import EnOceanConfigEntry
 from .const import KEY_ADDRESS, KEY_SENDER_ID
 
-TO_REDACT = {KEY_ADDRESS, KEY_SENDER_ID, "base_id", "device", "sender", "address"}
+TO_REDACT = {
+    KEY_ADDRESS,
+    KEY_SENDER_ID,
+    "base_id",
+    "device",
+    "sender",
+    "address",
+    "name",  # a blank name defaults to the radio address
+}
 
 
 async def async_get_config_entry_diagnostics(

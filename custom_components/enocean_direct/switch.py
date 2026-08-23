@@ -83,14 +83,19 @@ class EnOceanSwitch(EnOceanEntity, SwitchEntity):
         await self._send(False)
 
     async def _send(self, turn_on: bool) -> None:
+        # The command invalidates the last confirmation; a CMD 0x4 status
+        # arriving while we await the ack re-confirms and must not be
+        # overwritten by the optimistic write below.
+        self._confirmed = False
         acknowledged = await self.hub.async_set_output(self.record, turn_on)
         if not acknowledged:
+            self.async_write_ha_state()
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="command_not_acknowledged",
                 translation_placeholders={"address": self.record.address},
             )
-        # Optimistic until the actuator's CMD 0x4 status telegram arrives.
-        self._attr_is_on = turn_on
-        self._confirmed = False
+        if not self._confirmed:
+            # Optimistic until the actuator's CMD 0x4 status telegram arrives.
+            self._attr_is_on = turn_on
         self.async_write_ha_state()

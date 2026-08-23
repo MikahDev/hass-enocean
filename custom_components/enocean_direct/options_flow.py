@@ -22,12 +22,13 @@ from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
     EEP_ACTUATOR,
+    EEP_CHANNEL_COUNT,
+    EURID_MAX,
     KEY_ADDRESS,
     KEY_CHANNEL,
     KEY_EEP,
     KEY_NAME,
     KEY_SENDER_ID,
-    MAX_CHANNEL,
     SUPPORTED_EEPS,
 )
 from .models import (
@@ -92,7 +93,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         hub = getattr(self.config_entry, "runtime_data", None)
-        if hub is None:
+        if hub is None or hub.gateway is None:
             return self.async_abort(reason="not_loaded")
         if user_input is not None:
             address = user_input[KEY_ADDRESS]
@@ -140,7 +141,9 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             except AddressError:
                 errors[KEY_ADDRESS] = "invalid_address"
             else:
-                if address in self._addresses:
+                if int(address, 16) > EURID_MAX:
+                    errors[KEY_ADDRESS] = "not_eurid"
+                elif address in self._addresses:
                     errors[KEY_ADDRESS] = "duplicate_address"
             if not errors:
                 self._pending = {
@@ -198,12 +201,13 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                 )
                 return self._save([*self._raw_devices, record.as_dict()])
 
+        max_channel = EEP_CHANNEL_COUNT[self._pending[KEY_EEP]] - 1
         schema = vol.Schema(
             {
                 vol.Required(KEY_SENDER_ID, default=base_id or ""): TextSelector(),
                 vol.Required(KEY_CHANNEL, default=0): NumberSelector(
                     NumberSelectorConfig(
-                        min=0, max=MAX_CHANNEL, step=1, mode=NumberSelectorMode.BOX
+                        min=0, max=max_channel, step=1, mode=NumberSelectorMode.BOX
                     )
                 ),
             }
@@ -251,8 +255,15 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         target = next(
-            raw for raw in self._raw_devices if raw[KEY_ADDRESS] == self._remove_address
+            (
+                raw
+                for raw in self._raw_devices
+                if raw[KEY_ADDRESS] == self._remove_address
+            ),
+            None,
         )
+        if target is None:
+            return self.async_abort(reason="no_devices")
         if user_input is not None:
             remaining = [
                 raw

@@ -91,7 +91,8 @@
       "duplicate_address": "This address is already configured.",
       "invalid_sender": "Enter the sender ID as 8 hexadecimal digits.",
       "sender_out_of_range": "The sender ID must be within the transceiver Base ID range (Base ID to Base ID +127).",
-      "import_invalid": "The document was rejected; nothing was saved. See the details above."
+      "import_invalid": "The document was rejected; nothing was saved. See the details above.",
+      "not_eurid": "This is a sender/base address, not a device address (device EURIDs end at FF7FFFFF)."
     },
     "abort": {
       "inbox_empty": "No unconfigured senders have been heard yet.",
@@ -126,6 +127,9 @@
     },
     "command_not_acknowledged": {
       "message": "The transceiver did not acknowledge the command for {address}."
+    },
+    "send_failed": {
+      "message": "Sending to {address} failed: {error}"
     }
   }
 }

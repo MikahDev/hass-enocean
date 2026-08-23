@@ -21,6 +21,7 @@ async def test_diagnostics_redacted(hass: HomeAssistant, dongle: FakeDongle) -> 
     assert ACTUATOR["address"] not in text
     assert ACTUATOR["sender_id"] not in text
     assert "FTDI_TEST" not in text  # serial path carries the hardware serial
+    assert "Pilot relay" not in text  # names are redacted (may default to address)
     assert diagnostics["connected"] is True
     assert len(diagnostics["devices"]) == 2
     assert len(diagnostics["inbox"]) == 1

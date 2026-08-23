@@ -13,15 +13,16 @@ from typing import Any
 
 from .const import (
     EEP_ACTUATOR,
+    EEP_CHANNEL_COUNT,
     EEP_CONTACT,
     EEP_ROCKERS,
+    EURID_MAX,
     IMPORT_SCHEMA_VERSION,
     KEY_ADDRESS,
     KEY_CHANNEL,
     KEY_EEP,
     KEY_NAME,
     KEY_SENDER_ID,
-    MAX_CHANNEL,
     SENDER_OFFSET_MAX,
     SUPPORTED_EEPS,
 )
@@ -117,6 +118,9 @@ def validate_record(
     except AddressError as err:
         return None, [str(err)]
 
+    if int(address, 16) > EURID_MAX:
+        return None, [f"{address}: not a device address (EURIDs end at FF7FFFFF)"]
+
     if address in existing_addresses:
         errors.append(f"{address}: duplicate address")
 
@@ -146,17 +150,18 @@ def validate_record(
                         f"{base_id}..+{SENDER_OFFSET_MAX}"
                     )
 
+        max_channel = EEP_CHANNEL_COUNT[eep] - 1
         raw_channel = raw.get(KEY_CHANNEL)
         if raw_channel is None:
             errors.append(f"{address}: channel is required for {eep}")
         elif (
             isinstance(raw_channel, bool)
             or not isinstance(raw_channel, int)
-            or not 0 <= raw_channel <= MAX_CHANNEL
+            or not 0 <= raw_channel <= max_channel
         ):
             errors.append(
-                f"{address}: channel must be an integer 0..{MAX_CHANNEL}, "
-                f"got {raw_channel!r}"
+                f"{address}: channel must be an integer 0..{max_channel} "
+                f"for {eep}, got {raw_channel!r}"
             )
         else:
             channel = raw_channel
