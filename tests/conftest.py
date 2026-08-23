@@ -8,6 +8,7 @@ No test ever opens a real serial device.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -215,3 +216,10 @@ async def setup_entry(hass, entry: MockConfigEntry) -> bool:
     result = await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return result
+
+
+async def flush(hass) -> None:
+    """Let loop.call_soon-scheduled library observations propagate."""
+    for _ in range(3):
+        await asyncio.sleep(0)
+    await hass.async_block_till_done()
