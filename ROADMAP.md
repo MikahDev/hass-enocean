@@ -12,6 +12,14 @@ ordered roughly by value; nothing here is committed to a date.
   pre-filled; everything else still requires the user to pick the EEP, never
   guessed. Includes de-duplication against configured devices and an
   ignore list.
+- [ ] **Guided pairing (Jeedom-style)**: a "Pair" path on the discovery
+  card for NEW devices: automatically allocate the first free Base ID+offset
+  sender (library sender-slot tracking), answer the UTE teach-in with it,
+  and store it, so the user never types a sender ID for newly paired
+  devices. Migrated devices keep their historical sender (that value lives
+  in the device, not in the controller, and cannot be allocated). Transmits
+  a teach-in response: bounded to an explicit user action on one device,
+  first live use behind a supervised gate.
 - [ ] **Module parameters (Jeedom parity)**: per-actuator settings step
   sending D2-01 CMD 0x2 Actuator Set Local (local button enable/disable,
   switch vs toggle mode, power-failure default state), verified against the
