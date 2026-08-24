@@ -31,6 +31,9 @@
           "discovered_actuator": "Saisir un sender ID manuellement"
         }
       },
+      "pair": {
+        "title": "Appairage"
+      },
       "discovered_actuator": {
         "title": "Reglages de l'actionneur",
         "description": "Appareil {address}. Le sender ID est l'identite de controleur connue de l'actionneur ; le Base ID du transceiver ({base_id}) est propose et doit rester dans la plage Base ID +127. Le canal radio 0 correspond au Canal 1 de l'appareil.",
@@ -98,6 +101,9 @@
           "sender_id": "Sender ID du controleur",
           "channel": "Canal radio (0 = Canal 1)"
         }
+      },
+      "pair_device": {
+        "title": "Appairage"
       },
       "pair_name": {
         "title": "Appareil appaire",

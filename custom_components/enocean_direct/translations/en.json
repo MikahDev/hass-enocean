@@ -31,6 +31,9 @@
           "discovered_actuator": "Enter a sender ID manually"
         }
       },
+      "pair": {
+        "title": "Pairing"
+      },
       "discovered_actuator": {
         "title": "Actuator settings",
         "description": "Device {address}. The sender ID is the controller identity the actuator knows; the transceiver Base ID ({base_id}) is proposed and must stay within Base ID +127. Radio channel 0 is Channel 1 on the device.",
@@ -98,6 +101,9 @@
           "sender_id": "Controller sender ID",
           "channel": "Radio channel (0 = Channel 1)"
         }
+      },
+      "pair_device": {
+        "title": "Pairing"
       },
       "pair_name": {
         "title": "Device paired",
