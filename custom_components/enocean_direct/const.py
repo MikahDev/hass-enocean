@@ -42,6 +42,9 @@ EEP_SENSORS = (
 
 SUPPORTED_EEPS = (EEP_CONTACT, *EEP_ROCKERS, EEP_ACTUATOR, EEP_COVER, *EEP_SENSORS)
 
+# Room panels whose DB0 carries a battery OK/low flag (decoded locally).
+EEP_BATTERY_FLAG = ("A5-10-20", "A5-10-21")
+
 # Radio channels per transmitting EEP (both are single-channel). Membership
 # doubles as "needs a sender ID and a channel".
 EEP_CHANNEL_COUNT = {EEP_ACTUATOR: 1, EEP_COVER: 1}
@@ -67,6 +70,8 @@ SIGNAL_COVER_STATE = f"{DOMAIN}_cover_{{}}"  # .format(address)
 SIGNAL_TELEGRAM = f"{DOMAIN}_telegram_{{}}"  # .format(address)
 # Decoded values from a sensor-kind device: (entity_id, {observable: value}).
 SIGNAL_SENSOR = f"{DOMAIN}_sensor_{{}}"  # .format(address)
+# Battery low flag from an EEP_BATTERY_FLAG device: (is_low,).
+SIGNAL_BATTERY = f"{DOMAIN}_battery_{{}}"  # .format(address)
 
 EVENT_BUTTON = f"{DOMAIN}_event"
 

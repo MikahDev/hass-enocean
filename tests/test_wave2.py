@@ -16,7 +16,12 @@ from homeassistant.helpers import entity_registry as er
 from custom_components.enocean_direct.binary_sensor import (
     PROFILE_DESCRIPTIONS as BINARY_DESCRIPTIONS,
 )
-from custom_components.enocean_direct.const import CONF_DEVICES, DOMAIN, EEP_SENSORS
+from custom_components.enocean_direct.const import (
+    CONF_DEVICES,
+    DOMAIN,
+    EEP_BATTERY_FLAG,
+    EEP_SENSORS,
+)
 from custom_components.enocean_direct.gateway import sensor_entities_for_eep
 from custom_components.enocean_direct.sensor import PROFILE_DESCRIPTIONS
 
@@ -132,6 +137,23 @@ async def test_f6_10_00_pinned_bytes(hass: HomeAssistant, dongle: FakeDongle) ->
     assert hass.states.get("sensor.dev_window_handle").state == "tilted"
 
 
+async def test_a5_10_20_battery_flag(hass: HomeAssistant, dongle: FakeDongle) -> None:
+    """BATT is DB0 bit 4 (hand-pinned): 0x18 = low + LRN, 0x08 = OK + LRN."""
+    entry = make_entry(hass, [_record("A5-10-20")])
+    assert await setup_entry(hass, entry)
+    assert hass.states.get("binary_sensor.dev_battery").state == "unknown"
+
+    dongle.inject(erp1_frame(0xA5, [100, 0x00, 100, 0x18], SENSOR))
+    await flush(hass)
+    assert hass.states.get("binary_sensor.dev_battery").state == "on"  # low
+    # the same telegram still feeds the library-decoded values
+    assert hass.states.get("sensor.dev_temperature").state == "16.0"
+
+    dongle.inject(erp1_frame(0xA5, [100, 0x00, 100, 0x08], SENSOR))
+    await flush(hass)
+    assert hass.states.get("binary_sensor.dev_battery").state == "off"
+
+
 # ----------------------------------------------------------------------
 # encoder-built decode cases: scaling, inversion, enum labels, resolvers
 # ----------------------------------------------------------------------
@@ -214,8 +236,12 @@ async def test_all_profiles_create_expected_entities(
         entries = er.async_entries_for_device(
             entity_registry, device.id, include_disabled_entities=True
         )
-        # profile entities + rssi/last_seen/telegram_count diagnostics
-        assert len(entries) == len(sensor_entities_for_eep(eep)) + 3, eep
+        # profile entities + rssi/last_seen/telegram_count diagnostics,
+        # + the locally decoded battery flag on A5-10-20/21
+        expected = len(sensor_entities_for_eep(eep)) + 3
+        if eep in EEP_BATTERY_FLAG:
+            expected += 1
+        assert len(entries) == expected, eep
 
 
 # ----------------------------------------------------------------------

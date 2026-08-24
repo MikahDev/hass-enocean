@@ -28,7 +28,7 @@ Repairs issues and FR/EN translations.
 | A5-06-01..05 | Light sensors | `sensor` |
 | A5-07-03 | Occupancy sensor | `binary_sensor` (motion) + illuminance/voltage |
 | A5-08-01..03 | Light/temperature/occupancy sensors | `sensor` + `binary_sensor` |
-| A5-10-xx (35 types) | Room operating panels | `sensor` (temperature, set point, fan...) + `binary_sensor` |
+| A5-10-xx (35 types) | Room operating panels | `sensor` (temperature, set point, fan...) + `binary_sensor` (incl. battery-low on types 20/21) |
 | A5-12-00..03 | Metering (counter, electricity, gas, water) | `sensor` |
 | F6-10-00 | Window handle | `sensor` (open / tilted / closed) |
 

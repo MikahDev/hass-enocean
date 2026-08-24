@@ -20,6 +20,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -27,7 +28,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
 from . import EnOceanConfigEntry
-from .const import SIGNAL_CONTACT, SIGNAL_SENSOR
+from .const import EEP_BATTERY_FLAG, SIGNAL_BATTERY, SIGNAL_CONTACT, SIGNAL_SENSOR
 from .entity import EnOceanEntity
 from .gateway import sensor_entities_for_eep
 
@@ -90,7 +91,37 @@ async def async_setup_entry(
                         hub, record, description, observable, on_labels, off_labels
                     )
                 )
+            if record.eep in EEP_BATTERY_FLAG:
+                entities.append(EnOceanBatteryLow(hub, record))
     async_add_entities(entities)
+
+
+class EnOceanBatteryLow(EnOceanEntity, BinarySensorEntity):
+    """Low-battery flag of A5-10-20/21 room panels, decoded locally (the
+    library does not expose the BATT field as an observable)."""
+
+    _attr_device_class = BinarySensorDeviceClass.BATTERY
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "battery_low"
+
+    def __init__(self, hub, record) -> None:
+        super().__init__(hub, record)
+        self._attr_unique_id = f"{record.address}-battery_low"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                SIGNAL_BATTERY.format(self.record.address),
+                self._on_battery,
+            )
+        )
+
+    @callback
+    def _on_battery(self, is_low: bool) -> None:
+        self._attr_is_on = is_low
+        self.async_write_ha_state()
 
 
 class EnOceanProfileBinarySensor(EnOceanEntity, BinarySensorEntity):

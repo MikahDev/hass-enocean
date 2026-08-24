@@ -232,6 +232,9 @@
       }
     },
     "binary_sensor": {
+      "battery_low": {
+        "name": "Batterie"
+      },
       "motion": {
         "name": "Mouvement"
       },

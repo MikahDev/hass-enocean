@@ -48,6 +48,7 @@ from .const import (
     CONF_DEVICE_PATH,
     CONF_DEVICES,
     DOMAIN,
+    EEP_BATTERY_FLAG,
     EEP_CHANNEL_COUNT,
     EEP_CONTACT,
     EEP_ROCKERS,
@@ -58,6 +59,7 @@ from .const import (
     KEY_EEP,
     PAIRING_TIMEOUT,
     SENDER_OFFSET_MAX,
+    SIGNAL_BATTERY,
     SIGNAL_CONNECTION,
     SIGNAL_CONTACT,
     SIGNAL_COVER_STATE,
@@ -68,7 +70,7 @@ from .const import (
 )
 from .inbox import RadioInbox
 from .models import DeviceRecord, record_from_dict
-from .profiles import decode_d5, decode_f6
+from .profiles import decode_a5_10_battery, decode_d5, decode_f6
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -265,6 +267,13 @@ class EnOceanHub:
         async_dispatcher_send(
             self.hass, SIGNAL_TELEGRAM.format(address), rssi, dt_util.utcnow()
         )
+
+        if record.eep in EEP_BATTERY_FLAG and erp1.rorg == RORG.RORG_4BS:
+            # The BATT flag rides every data telegram; the panel's other
+            # values reach HA through the library's observations.
+            is_low = decode_a5_10_battery(bytes(erp1.telegram_data))
+            if is_low is not None:
+                async_dispatcher_send(self.hass, SIGNAL_BATTERY.format(address), is_low)
 
         if record.eep == EEP_CONTACT and erp1.rorg == RORG.RORG_1BS:
             reading = decode_d5(bytes(erp1.telegram_data))

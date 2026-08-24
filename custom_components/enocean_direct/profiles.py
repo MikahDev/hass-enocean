@@ -15,6 +15,12 @@ F6-02-01 / F6-02-02 (2-rocker switch), data byte DB0 with status NU bit set:
   bit 0 (SA):    1 = second action valid
 With NU clear and EB clear the telegram is the energy-bow release.
 Status byte: bit 5 = T21, bit 4 = NU.
+
+A5-10-20 / A5-10-21 (room operating panel), data byte DB0:
+  bit 4 (BATT): 0 = battery OK, 1 = battery low
+  bit 3 (LRNB): 0 = teach-in telegram, 1 = data telegram
+Decoded locally because enocean-async does not annotate BATT with an
+observable; the panel's other values flow through the library.
 """
 
 from __future__ import annotations
@@ -36,6 +42,14 @@ def decode_d5(telegram_data: bytes) -> D5Reading | None:
         return None
     db0 = telegram_data[0]
     return D5Reading(is_open=(db0 & 0x01) == 0, is_teach_in=(db0 & 0x08) == 0)
+
+
+def decode_a5_10_battery(telegram_data: bytes) -> bool | None:
+    """Decode the BATT flag of an A5-10-20/21 telegram. Returns True when the
+    battery is low, None for teach-ins or malformed payloads."""
+    if len(telegram_data) != 4 or not telegram_data[3] & 0x08:
+        return None
+    return bool(telegram_data[3] & 0x10)
 
 
 @dataclass(frozen=True)
