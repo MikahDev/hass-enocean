@@ -57,7 +57,8 @@
       "not_loaded": "La passerelle n'est pas demarree.",
       "not_connected": "La passerelle EnOcean n'est pas connectee.",
       "pair_timeout": "Aucun teach-in n'a ete recu de l'appareil a temps. Declenchez le teach-in sur l'appareil pour obtenir une nouvelle carte de decouverte et reessayez.",
-      "pair_no_free_sender": "Les 127 sender ID de la plage Base ID du transceiver sont tous utilises ; l'appairage ne peut pas en attribuer."
+      "pair_no_free_sender": "Les 127 sender ID de la plage Base ID du transceiver sont tous utilises ; l'appairage ne peut pas en attribuer.",
+      "pair_receive_only": "Cet appareil est en reception seule et n'a pas besoin d'appairage. Ajoutez-le depuis sa carte de decouverte ou la boite de reception radio."
     },
     "progress": {
       "pair_waiting": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil {address}. La passerelle repondra a son teach-in avec le sender ID attribue."
@@ -155,7 +156,8 @@
       "already_configured": "Cet appareil est deja configure.",
       "pair_timeout": "Aucun teach-in n'a ete recu a temps. Relancez l'appairage et appuyez sur le bouton teach-in pendant la fenetre.",
       "pair_no_free_sender": "Les 127 sender ID de la plage Base ID du transceiver sont tous utilises ; l'appairage ne peut pas en attribuer.",
-      "pair_unsupported_eep": "L'appareil a annonce un profil non pris en charge par cette integration. Consultez la boite de reception radio pour voir l'EEP declare."
+      "pair_unsupported_eep": "L'appareil a annonce un profil non pris en charge par cette integration. Consultez la boite de reception radio pour voir l'EEP declare.",
+      "pair_receive_only": "Cet appareil est en reception seule et n'a pas besoin d'appairage. Ajoutez-le depuis sa carte de decouverte ou la boite de reception radio."
     },
     "progress": {
       "pair_waiting_any": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil. La passerelle repondra au premier teach-in entendu avec un sender ID nouvellement attribue."
@@ -174,6 +176,73 @@
       },
       "sender_id": {
         "name": "Sender ID"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "temperature_setpoint": {
+        "name": "Consigne de temperature"
+      },
+      "humidity": {
+        "name": "Humidite"
+      },
+      "illumination": {
+        "name": "Luminosite"
+      },
+      "supply_voltage": {
+        "name": "Tension d'alimentation"
+      },
+      "fan_speed": {
+        "name": "Vitesse de ventilation"
+      },
+      "set_point": {
+        "name": "Consigne"
+      },
+      "energy": {
+        "name": "Energie"
+      },
+      "power": {
+        "name": "Puissance"
+      },
+      "gas_volume": {
+        "name": "Volume de gaz"
+      },
+      "gas_flow": {
+        "name": "Debit de gaz"
+      },
+      "water_volume": {
+        "name": "Volume d'eau"
+      },
+      "water_flow": {
+        "name": "Debit d'eau"
+      },
+      "counter": {
+        "name": "Compteur"
+      },
+      "counter_rate": {
+        "name": "Cadence du compteur"
+      },
+      "window_state": {
+        "name": "Poignee de fenetre",
+        "state": {
+          "open": "Ouverte",
+          "tilted": "Entrebaillee",
+          "closed": "Fermee"
+        }
+      }
+    },
+    "binary_sensor": {
+      "motion": {
+        "name": "Mouvement"
+      },
+      "occupancy_button": {
+        "name": "Bouton de presence"
+      },
+      "day_night": {
+        "name": "Jour/nuit"
+      },
+      "contact_state": {
+        "name": "Contact"
       }
     }
   },

@@ -57,7 +57,8 @@
       "not_loaded": "The gateway is not running.",
       "not_connected": "The EnOcean gateway is not connected.",
       "pair_timeout": "No teach-in was received from the device in time. Trigger the teach-in on the device to get a new discovery card and try again.",
-      "pair_no_free_sender": "All 127 sender IDs of the transceiver Base ID range are in use; pairing cannot allocate one."
+      "pair_no_free_sender": "All 127 sender IDs of the transceiver Base ID range are in use; pairing cannot allocate one.",
+      "pair_receive_only": "This device is receive-only and needs no pairing. Add it from its discovery card or the radio inbox."
     },
     "progress": {
       "pair_waiting": "Press the teach-in (LRN) button on device {address} now. The gateway will answer its teach-in with the allocated sender ID."
@@ -155,7 +156,8 @@
       "already_configured": "This device is already configured.",
       "pair_timeout": "No teach-in was received in time. Start pairing again and press the teach-in button within the window.",
       "pair_no_free_sender": "All 127 sender IDs of the transceiver Base ID range are in use; pairing cannot allocate one.",
-      "pair_unsupported_eep": "The device announced a profile this integration does not support. See the radio inbox for the declared EEP."
+      "pair_unsupported_eep": "The device announced a profile this integration does not support. See the radio inbox for the declared EEP.",
+      "pair_receive_only": "This device is receive-only and needs no pairing. Add it from its discovery card or the radio inbox."
     },
     "progress": {
       "pair_waiting_any": "Press the teach-in (LRN) button on the device now. The gateway will answer the first teach-in it hears with a freshly allocated sender ID."
@@ -174,6 +176,73 @@
       },
       "sender_id": {
         "name": "Sender ID"
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "temperature_setpoint": {
+        "name": "Temperature set point"
+      },
+      "humidity": {
+        "name": "Humidity"
+      },
+      "illumination": {
+        "name": "Illuminance"
+      },
+      "supply_voltage": {
+        "name": "Supply voltage"
+      },
+      "fan_speed": {
+        "name": "Fan speed"
+      },
+      "set_point": {
+        "name": "Set point"
+      },
+      "energy": {
+        "name": "Energy"
+      },
+      "power": {
+        "name": "Power"
+      },
+      "gas_volume": {
+        "name": "Gas volume"
+      },
+      "gas_flow": {
+        "name": "Gas flow"
+      },
+      "water_volume": {
+        "name": "Water volume"
+      },
+      "water_flow": {
+        "name": "Water flow"
+      },
+      "counter": {
+        "name": "Counter"
+      },
+      "counter_rate": {
+        "name": "Counter rate"
+      },
+      "window_state": {
+        "name": "Window handle",
+        "state": {
+          "open": "Open",
+          "tilted": "Tilted",
+          "closed": "Closed"
+        }
+      }
+    },
+    "binary_sensor": {
+      "motion": {
+        "name": "Motion"
+      },
+      "occupancy_button": {
+        "name": "Occupancy button"
+      },
+      "day_night": {
+        "name": "Day/night"
+      },
+      "contact_state": {
+        "name": "Contact"
       }
     }
   },

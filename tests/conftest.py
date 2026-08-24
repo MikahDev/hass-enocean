@@ -207,6 +207,36 @@ def d2_status_frame(sender: int, channel: int, output_value: int, **kwargs) -> b
     return erp1_frame(0xD2, payload, sender, **kwargs)
 
 
+def a5_data_frame(sender: int, eep: str, raw: dict[str, int], **kwargs) -> bytes:
+    """4BS DATA telegram built from raw field values via the library's own
+    encoder. Bit offsets are therefore shared with the decoder; raw-to-scaled
+    conversion and enum labels are still exercised end to end. Flagship
+    profiles additionally have hand-pinned byte fixtures in test_wave2.py."""
+    from enocean_async.address import EURID
+    from enocean_async.eep import EEP_SPECIFICATIONS
+    from enocean_async.eep.handler import EEPHandler
+    from enocean_async.eep.id import EEP
+    from enocean_async.eep.message import RawEEPMessage
+
+    msg = RawEEPMessage(sender=EURID(sender), raw=dict(raw))
+    erp1 = EEPHandler(EEP_SPECIFICATIONS[EEP(eep)]).encode(msg)
+    data = bytearray(erp1.telegram_data)
+    data.extend(bytes(4 - len(data)))  # encoder sizes to the last field; 4BS is 4 bytes
+    data[3] |= 0x08  # LRN bit set: data telegram, not teach-in
+    return erp1_frame(0xA5, bytes(data), sender, **kwargs)
+
+
+def fourbs_teach_in_frame(sender: int, func: int, type_: int, **kwargs) -> bytes:
+    """4BS teach-in query declaring an A5 EEP (LRN type: EEP + manufacturer)."""
+    payload = [
+        (func << 2) | (type_ >> 5),
+        (type_ & 0x1F) << 3,
+        0x00,
+        0x80,  # LRN type=1 (with EEP), learn status=query, LRN bit=0
+    ]
+    return erp1_frame(0xA5, payload, sender, **kwargs)
+
+
 def d2_05_reply_frame(sender: int, position: int, angle: int = 0, **kwargs) -> bytes:
     """D2-05 CMD 0x4 Reply position and angle, channel 1.
 

@@ -20,9 +20,12 @@ from enocean_async import (
     Observation,
     device_type_for_eep,
 )
+from enocean_async.eep import EEP_SPECIFICATIONS
+from enocean_async.protocol.erp1.fourbs import FourBSTeachInTelegram
 from enocean_async.protocol.erp1.rorg import RORG
 from enocean_async.protocol.erp1.ute import UTEMessage
 from enocean_async.protocol.esp3.response import ResponseCode
+from enocean_async.semantics.entity import EntityCategory, EntityType
 from enocean_async.semantics.instruction import Instruction
 from enocean_async.semantics.instructions.cover import (
     CoverClose,
@@ -58,6 +61,7 @@ from .const import (
     SIGNAL_CONNECTION,
     SIGNAL_CONTACT,
     SIGNAL_COVER_STATE,
+    SIGNAL_SENSOR,
     SIGNAL_SWITCH_STATE,
     SIGNAL_TELEGRAM,
     SUPPORTED_EEPS,
@@ -78,6 +82,25 @@ class PairingError(Exception):
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
+
+
+def sensor_entities_for_eep(eep: str) -> list[tuple[str, str, bool]]:
+    """List the (entity_id, observable, is_binary) triples a sensor profile
+    reports, from the library's own EEP specification. Keeps enocean_async
+    types out of the platform modules."""
+    spec = EEP_SPECIFICATIONS.get(EEP(eep))
+    if spec is None:
+        return []
+    out: list[tuple[str, str, bool]] = []
+    for entity in spec.entities:
+        if entity.category is not EntityCategory.DEFAULT:
+            continue
+        entity_type = entity.entity_type
+        if entity_type not in (EntityType.SENSOR, EntityType.BINARY):
+            continue
+        for observable in sorted(entity.observables):
+            out.append((entity.id, observable.value, entity_type is EntityType.BINARY))
+    return out
 
 
 def _rssi_dbm(raw: int | None) -> int | None:
@@ -126,21 +149,26 @@ class EnOceanHub:
         if base is not None:
             self.base_id = f"{int(base):08X}"
 
-        # Register transmitting devices (D2-01 switches, D2-05 covers) with the
-        # library so their status telegrams are decoded. Contacts and rockers
-        # are decoded locally.
+        # Register transmitting devices (D2-01 switches, D2-05 covers) and
+        # receive-only sensor profiles with the library so their telegrams are
+        # decoded. Contacts and rockers are decoded locally.
         for record in self.devices.values():
-            if record.eep not in EEP_CHANNEL_COUNT:
+            if record.eep not in EEP_CHANNEL_COUNT and record.kind != "sensor":
                 continue
+            sender = (
+                BaseAddress(int(record.sender_id, 16))
+                if record.sender_id is not None
+                else None
+            )
             try:
                 gateway.add_device(
                     address=EURID(int(record.address, 16)),
                     device_type=device_type_for_eep(EEP(record.eep)),
-                    sender=BaseAddress(int(record.sender_id, 16)),
+                    sender=sender,
                     name=record.name,
                 )
             except ValueError as err:
-                _LOGGER.error("Could not register actuator %s: %s", record.address, err)
+                _LOGGER.error("Could not register device %s: %s", record.address, err)
 
     async def async_stop(self) -> None:
         """Close the serial connection. Safe to call more than once."""
@@ -167,7 +195,7 @@ class EnOceanHub:
         elif erp1.rorg == RORG.RORG_UTE:
             # A UTE teach-in explicitly declares the device's EEP. Parsed for
             # inbox display; the library only acknowledges it inside a
-            # user-initiated pairing window focused on that one device.
+            # user-initiated pairing window.
             try:
                 ute = UTEMessage.from_erp1(erp1)
                 declared_eep = (
@@ -175,6 +203,20 @@ class EnOceanHub:
                 )
             except ValueError, IndexError:
                 declared_eep = None
+        elif erp1.rorg == RORG.RORG_4BS and erp1.is_learning_telegram:
+            # 4BS teach-ins can declare an A5 EEP (LRN type bit set). Parsed
+            # for inbox display and discovery; never answered outside a
+            # pairing window, and receive-only profiles need no answer at all.
+            try:
+                teach_in = FourBSTeachInTelegram.from_erp1(erp1)
+            except ValueError:
+                declared_eep = None
+            else:
+                if teach_in.eep is not None:
+                    declared_eep = (
+                        f"{teach_in.eep.rorg:02X}-{teach_in.eep.func:02X}-"
+                        f"{teach_in.eep.type:02X}"
+                    )
         record = self.devices.get(address)
         self.inbox.record(
             address=address,
@@ -185,6 +227,19 @@ class EnOceanHub:
             declared_eep=declared_eep,
         )
         if record is None:
+            # During an unfocused pairing window, a teach-in from a
+            # receive-only profile resolves the wait directly so the user gets
+            # the "no pairing needed" explanation instead of a timeout (the
+            # library answers UTE teach-ins itself but ignores plain 4BS ones).
+            waiter = self._pairing.get("*")
+            if (
+                waiter is not None
+                and not waiter.done()
+                and declared_eep in SUPPORTED_EEPS
+                and declared_eep not in EEP_CHANNEL_COUNT
+                and int(address, 16) <= EURID_MAX
+            ):
+                waiter.set_result((address, declared_eep))
             # A teach-in is a deliberate user action: surface a native
             # discovery card. Data telegrams stay in the inbox so foreign
             # devices don't spam discovery. Base-range senders are other
@@ -280,6 +335,20 @@ class EnOceanHub:
                 SIGNAL_SWITCH_STATE.format(address),
                 channel,
                 bool(values[Observable.SWITCH_STATE]),
+            )
+            return
+        address = f"{int(observation.device):08X}"
+        record = self.devices.get(address)
+        if record is not None and record.kind == "sensor":
+            # Decoded profile values for receive-only sensors. Metadata
+            # observations (rssi, last_seen, telegram_count) also pass through
+            # here; no profile entity subscribes to those ids, so they are
+            # simply ignored by every listener.
+            async_dispatcher_send(
+                self.hass,
+                SIGNAL_SENSOR.format(address),
+                observation.entity,
+                {obs.value: value for obs, value in values.items()},
             )
 
     def _on_connection_status(self, status: str) -> None:
@@ -430,6 +499,10 @@ class EnOceanHub:
                 "Pairing: device %s declared unsupported EEP %s", taught_address, eep
             )
             raise PairingError("pair_unsupported_eep")
+        if eep not in EEP_CHANNEL_COUNT:
+            # Receive-only profile: it needs no sender and no pairing. Add it
+            # from its discovery card or the radio inbox instead.
+            raise PairingError("pair_receive_only")
         return taught_address, eep, sender_id
 
     @callback

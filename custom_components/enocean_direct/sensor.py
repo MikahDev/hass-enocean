@@ -1,5 +1,5 @@
-"""Per-device diagnostic sensors: signal strength, last seen, telegram count,
-and the configured sender ID.
+"""Sensors: decoded values from receive-only profiles (wave 2), plus the
+per-device diagnostics (signal strength, last seen, telegram count, sender ID).
 
 All values derive from telegrams the device sends anyway; nothing is polled
 and nothing is transmitted. Counters restart at zero on reload, matching the
@@ -8,21 +8,156 @@ in-memory design of the radio inbox.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import SIGNAL_STRENGTH_DECIBELS_MILLIWATT, EntityCategory
+from homeassistant.const import (
+    LIGHT_LUX,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    EntityCategory,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfVolume,
+    UnitOfVolumeFlowRate,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import EnOceanConfigEntry
-from .const import SIGNAL_TELEGRAM
+from .const import SIGNAL_SENSOR, SIGNAL_TELEGRAM
 from .entity import EnOceanEntity
+from .gateway import sensor_entities_for_eep
+
+_LOGGER = logging.getLogger(__name__)
+
+# One description per library entity id a wave-2 profile can report. The key
+# doubles as translation key. fan_speed carries the EEP's stage labels as
+# text, so it has no state class.
+PROFILE_DESCRIPTIONS: dict[str, SensorEntityDescription] = {
+    description.key: description
+    for description in (
+        SensorEntityDescription(
+            key="temperature",
+            translation_key="temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=1,
+        ),
+        SensorEntityDescription(
+            key="temperature_setpoint",
+            translation_key="temperature_setpoint",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=1,
+        ),
+        SensorEntityDescription(
+            key="humidity",
+            translation_key="humidity",
+            device_class=SensorDeviceClass.HUMIDITY,
+            native_unit_of_measurement="%",
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=1,
+        ),
+        SensorEntityDescription(
+            key="illumination",
+            translation_key="illumination",
+            device_class=SensorDeviceClass.ILLUMINANCE,
+            native_unit_of_measurement=LIGHT_LUX,
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=0,
+        ),
+        SensorEntityDescription(
+            key="supply_voltage",
+            translation_key="supply_voltage",
+            device_class=SensorDeviceClass.VOLTAGE,
+            native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=2,
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+        SensorEntityDescription(
+            key="fan_speed",
+            translation_key="fan_speed",
+        ),
+        SensorEntityDescription(
+            key="set_point",
+            translation_key="set_point",
+            state_class=SensorStateClass.MEASUREMENT,
+            suggested_display_precision=0,
+        ),
+        SensorEntityDescription(
+            key="energy",
+            translation_key="energy",
+            device_class=SensorDeviceClass.ENERGY,
+            native_unit_of_measurement=UnitOfEnergy.WATT_HOUR,
+            state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
+        SensorEntityDescription(
+            key="power",
+            translation_key="power",
+            device_class=SensorDeviceClass.POWER,
+            native_unit_of_measurement=UnitOfPower.WATT,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="gas_volume",
+            translation_key="gas_volume",
+            device_class=SensorDeviceClass.GAS,
+            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+            state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
+        SensorEntityDescription(
+            key="gas_flow",
+            translation_key="gas_flow",
+            device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
+            native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_SECOND,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="water_volume",
+            translation_key="water_volume",
+            device_class=SensorDeviceClass.WATER,
+            native_unit_of_measurement=UnitOfVolume.CUBIC_METERS,
+            state_class=SensorStateClass.TOTAL_INCREASING,
+        ),
+        SensorEntityDescription(
+            key="water_flow",
+            translation_key="water_flow",
+            device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
+            native_unit_of_measurement=UnitOfVolumeFlowRate.LITERS_PER_SECOND,
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        # counter: no state class. The library collapses A5-12-00's 16
+        # measurement channels into one value, and interleaved channels would
+        # corrupt TOTAL_INCREASING long-term statistics irreversibly.
+        SensorEntityDescription(
+            key="counter",
+            translation_key="counter",
+        ),
+        SensorEntityDescription(
+            key="counter_rate",
+            translation_key="counter_rate",
+            state_class=SensorStateClass.MEASUREMENT,
+        ),
+        SensorEntityDescription(
+            key="window_state",
+            translation_key="window_state",
+            device_class=SensorDeviceClass.ENUM,
+            options=["open", "tilted", "closed"],
+        ),
+    )
+}
 
 
 async def async_setup_entry(
@@ -38,7 +173,53 @@ async def async_setup_entry(
         entities.append(EnOceanTelegramCountSensor(hub, record))
         if record.sender_id is not None:
             entities.append(EnOceanSenderIDSensor(hub, record))
+        if record.kind != "sensor":
+            continue
+        for entity_id, observable, is_binary in sensor_entities_for_eep(record.eep):
+            if is_binary:
+                continue  # handled by the binary_sensor platform
+            description = PROFILE_DESCRIPTIONS.get(entity_id)
+            if description is None:
+                _LOGGER.debug(
+                    "No sensor description for %s entity %s", record.eep, entity_id
+                )
+                continue
+            entities.append(EnOceanProfileSensor(hub, record, description, observable))
     async_add_entities(entities)
+
+
+class EnOceanProfileSensor(EnOceanEntity, SensorEntity):
+    """One decoded value of a receive-only profile."""
+
+    def __init__(self, hub, record, description, observable: str) -> None:
+        super().__init__(hub, record)
+        self.entity_description = description
+        self._observable = observable
+        self._attr_unique_id = f"{record.address}-{description.key}"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                SIGNAL_SENSOR.format(self.record.address),
+                self._on_values,
+            )
+        )
+
+    @callback
+    def _on_values(self, entity_id: str, values: dict) -> None:
+        if entity_id != self.entity_description.key or self._observable not in values:
+            return
+        value = values[self._observable]
+        options = self.entity_description.options
+        if options is not None and value not in options:
+            # An enum label outside the declared vocabulary (e.g. after a
+            # library bump) would make the state machine reject every write.
+            _LOGGER.debug("%s: ignoring unknown label %r", self.entity_id, value)
+            return
+        self._attr_native_value = value
+        self.async_write_ha_state()
 
 
 class EnOceanTelegramSensor(EnOceanEntity, SensorEntity):

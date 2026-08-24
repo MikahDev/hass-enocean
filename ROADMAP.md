@@ -38,11 +38,13 @@ ordered roughly by value; nothing here is committed to a date.
   `cover` entity via the library's D2-05 handler (position, stop, status
   feedback), same explicit sender-ID rules as D2-01. Transmits: first live
   movement goes through a supervised gate like the relay test.
-- [ ] **EEP expansion, wave 2 — receive-only sensors** (safe, no TX):
+- [x] **EEP expansion, wave 2 — receive-only sensors** (v0.7.0, safe, no TX):
   profiles the enocean-async library decodes, exposed as native sensors:
   A5-02-xx temperature, A5-04-xx temperature/humidity, A5-06-xx light,
   A5-07-03 occupancy, A5-08-xx, A5-10-xx room panels, A5-12-00..03
-  metering, F6-10-00 window handle. Fixture-tested per profile.
+  metering, F6-10-00 window handle. Fixture-tested: hand-pinned telegram
+  bytes for flagship profiles, encoder-built decode cases for scaling and
+  label variants, and an entity-creation check across all 75 profiles.
 - [ ] **EEP expansion, wave 3 — remaining actuators**: other D2-01 types
   (incl. metering variants as power/energy sensors), D2-20-02, A5-20-01
   valve, A5-38-08 central command / Eltako dimmers.
@@ -65,6 +67,11 @@ ordered roughly by value; nothing here is committed to a date.
 - [ ] Consider submitting to the HACS default store once the integration has
   settled.
 - [ ] Persist the radio inbox across reloads (currently in-memory by design).
-- [ ] Parse 4BS teach-in profiles for inbox display (no 4BS EEPs in MVP yet).
+- [x] Parse 4BS teach-in profiles for inbox display (v0.7.0, with wave 2).
 - [ ] Friendlier reconfigure: re-validating the same serial path fails with
   `cannot_connect` while the entry holds the port.
+- [ ] Known ceiling (upstream): some wave-2 specs carry availability/presence
+  flags (A5-04 TSN, A5-06-04 TMPAV/ENAV, A5-10-1F TMP_F/SP_F/FAN_F) that
+  enocean-async decodes but does not gate on, so an unpopulated field can
+  surface as its scale minimum. Needs semantic resolvers upstream; consider
+  contributing to the library.

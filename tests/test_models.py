@@ -152,7 +152,7 @@ def test_validate_area() -> None:
 
 def test_validate_unknown_eep_and_duplicate() -> None:
     record, errors = validate_record(
-        {"address": "0084ACF3", "eep": "A5-02-05"}, BASE, set()
+        {"address": "0084ACF3", "eep": "A5-99-99"}, BASE, set()
     )
     assert record is None and any("unsupported EEP" in error for error in errors)
 

@@ -14,10 +14,11 @@ Talks to an EnOcean USB transceiver directly via the enocean-async library. No M
 - Never open a real serial device from tests. All tests use the FakeDongle in tests/conftest.py.
 - Never add an open learning mode or an arbitrary-packet send service. Transmission
   is limited to D2-01 switch and D2-05 cover commands from configured entities, plus
-  the UTE teach-in response inside a guided-pairing window (user-initiated from a
-  discovery card or the Configure menu, time-bounded by PAIRING_TIMEOUT; the
-  discovery-card window is focused on that one device, the menu window accepts
-  the first supported teach-in heard).
+  teach-in responses the library sends inside a guided-pairing window
+  (user-initiated from a discovery card or the Configure menu, time-bounded by
+  PAIRING_TIMEOUT; the discovery-card window is focused on that one device, the
+  menu window accepts the first supported teach-in heard). Wave-2 sensor profiles
+  are receive-only: no sender, no channel, never paired.
 - Sender IDs are validated against the transceiver Base ID range (base to base+127).
   They are user-provided, except guided pairing which allocates the first free
   base+offset (offset 1..127; offset 0 stays the manual default proposal).

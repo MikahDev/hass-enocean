@@ -16,6 +16,7 @@ from .const import (
     EEP_CONTACT,
     EEP_COVER,
     EEP_ROCKERS,
+    EEP_SENSORS,
     EURID_MAX,
     IMPORT_SCHEMA_VERSION,
     KEY_ADDRESS,
@@ -78,6 +79,8 @@ class DeviceRecord:
             return "rocker"
         if self.eep == EEP_COVER:
             return "cover"
+        if self.eep in EEP_SENSORS:
+            return "sensor"
         return "actuator"
 
     @property
