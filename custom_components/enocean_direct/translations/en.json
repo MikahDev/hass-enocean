@@ -72,7 +72,7 @@
       },
       "import_devices": {
         "title": "Import an inventory",
-        "description": "Paste a JSON document: {\"version\": 1, \"devices\": [{\"address\": \"050A5C20\", \"eep\": \"D2-01-0F\", \"name\": \"Relay\", \"sender_id\": \"FF974100\", \"channel\": 0}]}. The whole file is validated first; nothing is saved if any record is invalid.\n\n{detail}",
+        "description": "Paste a JSON export document. Format: a top-level \"version\": 1 and a \"devices\" list; each device has \"address\" (8 hex digits), \"eep\", \"name\", and for actuators \"sender_id\" and \"channel\". The whole file is validated first; nothing is saved if any record is invalid.\n\n{detail}",
         "data": {
           "document": "JSON document"
         }
