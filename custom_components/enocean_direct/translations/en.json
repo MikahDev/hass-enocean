@@ -155,6 +155,22 @@
       "pair_waiting_any": "Press the teach-in (LRN) button on the device now. The gateway will answer the first teach-in it hears with a freshly allocated sender ID."
     }
   },
+  "entity": {
+    "sensor": {
+      "rssi": {
+        "name": "Signal strength"
+      },
+      "last_seen": {
+        "name": "Last seen"
+      },
+      "telegram_count": {
+        "name": "Telegram count"
+      },
+      "sender_id": {
+        "name": "Sender ID"
+      }
+    }
+  },
   "device_automation": {
     "trigger_type": {
       "pressed": "\"{subtype}\" pressed",

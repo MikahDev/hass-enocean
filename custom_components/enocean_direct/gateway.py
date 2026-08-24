@@ -38,6 +38,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import discovery_flow
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_BASE_ID,
@@ -58,6 +59,7 @@ from .const import (
     SIGNAL_CONTACT,
     SIGNAL_COVER_STATE,
     SIGNAL_SWITCH_STATE,
+    SIGNAL_TELEGRAM,
     SUPPORTED_EEPS,
 )
 from .inbox import RadioInbox
@@ -200,6 +202,14 @@ class EnOceanHub:
                     data={KEY_ADDRESS: address, KEY_EEP: declared_eep},
                 )
             return
+
+        # Diagnostics: every telegram from a configured device counts, whatever
+        # its RORG. This single path covers locally decoded devices (contacts,
+        # rockers) and library-registered ones (actuators, covers) alike, since
+        # all incoming ERP1 telegrams pass through here before EEP decoding.
+        async_dispatcher_send(
+            self.hass, SIGNAL_TELEGRAM.format(address), rssi, dt_util.utcnow()
+        )
 
         if record.eep == EEP_CONTACT and erp1.rorg == RORG.RORG_1BS:
             reading = decode_d5(bytes(erp1.telegram_data))

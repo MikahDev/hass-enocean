@@ -155,6 +155,22 @@
       "pair_waiting_any": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil. La passerelle repondra au premier teach-in entendu avec un sender ID nouvellement attribue."
     }
   },
+  "entity": {
+    "sensor": {
+      "rssi": {
+        "name": "Force du signal"
+      },
+      "last_seen": {
+        "name": "Derniere reception"
+      },
+      "telegram_count": {
+        "name": "Nombre de telegrammes"
+      },
+      "sender_id": {
+        "name": "Sender ID"
+      }
+    }
+  },
   "device_automation": {
     "trigger_type": {
       "pressed": "\"{subtype}\" appuye",

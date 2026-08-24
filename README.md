@@ -11,8 +11,9 @@ EnOcean USB transceiver -> enocean_direct -> native HA devices and entities
 Built on the [enocean-async](https://github.com/henningkerstan/enocean-async)
 library (the same library the Home Assistant Core EnOcean integration uses),
 with the device management the core integration lacks: a UI config flow, a
-radio inbox, manual addition by radio ID, import/export, Repairs issues and
-FR/EN translations.
+radio inbox, manual addition by radio ID, import/export, per-device
+diagnostic sensors (signal strength, last seen, telegram count, sender ID),
+Repairs issues and FR/EN translations.
 
 ## Supported profiles (MVP)
 

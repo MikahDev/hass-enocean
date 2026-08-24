@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "enocean_direct"
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.COVER, Platform.SWITCH]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.COVER, Platform.SENSOR, Platform.SWITCH]
 
 CONF_DEVICE_PATH = "device"
 CONF_BASE_ID = "base_id"
@@ -44,6 +44,8 @@ SIGNAL_CONNECTION = f"{DOMAIN}_connection_{{}}"  # .format(entry_id)
 SIGNAL_CONTACT = f"{DOMAIN}_contact_{{}}"  # .format(address)
 SIGNAL_SWITCH_STATE = f"{DOMAIN}_switch_{{}}"  # .format(address)
 SIGNAL_COVER_STATE = f"{DOMAIN}_cover_{{}}"  # .format(address)
+# Every telegram received from a configured device: (rssi_dbm, utc datetime).
+SIGNAL_TELEGRAM = f"{DOMAIN}_telegram_{{}}"  # .format(address)
 
 EVENT_BUTTON = f"{DOMAIN}_event"
 

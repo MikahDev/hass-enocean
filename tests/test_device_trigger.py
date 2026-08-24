@@ -107,16 +107,19 @@ async def test_trigger_fires_automation(
 async def test_rocker_creates_no_state_entities(
     hass: HomeAssistant, dongle: FakeDongle
 ) -> None:
-    """No misleading persistent state for momentary rockers."""
+    """No misleading persistent button state for momentary rockers; every
+    rocker entity must be a diagnostic (checked in the registry, which also
+    covers default-disabled entities)."""
+    from homeassistant.const import EntityCategory
+    from homeassistant.helpers import entity_registry as er
+
     entry = make_entry(hass, [ROCKER])
     assert await setup_entry(hass, entry)
-    assert (
-        len(
-            [
-                entity_id
-                for entity_id in hass.states.async_entity_ids()
-                if "rocker" in entity_id
-            ]
-        )
-        == 0
+    registry = er.async_get(hass)
+    rocker_entries = [
+        entry for entry in registry.entities.values() if "rocker" in entry.entity_id
+    ]
+    assert rocker_entries  # diagnostics are expected
+    assert all(
+        entry.entity_category is EntityCategory.DIAGNOSTIC for entry in rocker_entries
     )

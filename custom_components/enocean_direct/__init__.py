@@ -55,9 +55,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: EnOceanConfigEntry) -> 
 def _sync_device_registry(
     hass: HomeAssistant, entry: EnOceanConfigEntry, hub: EnOceanHub
 ) -> None:
-    """Create device entries for all configured devices (rockers have no
-    entities, so they need explicit registry entries for device triggers)
-    and remove entries for devices no longer configured."""
+    """Create device entries for all configured devices before the platforms
+    load (so the chosen area is applied on first creation, and rocker device
+    triggers work) and remove entries for devices no longer configured."""
     registry = dr.async_get(hass)
     areas = ar.async_get(hass)
     for record in hub.devices.values():

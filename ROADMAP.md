@@ -21,13 +21,13 @@ ordered roughly by value; nothing here is committed to a date.
   in the device, not in the controller, and cannot be allocated). Transmits
   a teach-in response: bounded to an explicit user action on one device,
   first live use behind a supervised gate.
-- [ ] **Per-device diagnostics** (safe, no TX): expose signal strength (RSSI
-  dBm), last seen, and telegram count as diagnostic sensor entities on every
-  configured device (the library's metadata observer already emits all
-  three). Add a sender ID diagnostic entity (or device-page field) for
-  actuators/covers so the allocated or historical sender is visible for
-  debugging without opening the entity attributes. Feeds into the repeater
-  insight exploration below (same telegram metadata).
+- [x] **Per-device diagnostics** (v0.6.0, safe, no TX): signal strength (RSSI
+  dBm), last seen, and telegram count (disabled by default) as diagnostic
+  sensor entities on every configured device, fed by every incoming ERP1
+  telegram. A sender ID diagnostic entity on actuators/covers makes the
+  allocated or historical sender visible for debugging without opening the
+  entity attributes. Feeds into the repeater insight exploration below
+  (same telegram metadata).
 - [ ] **Module parameters (Jeedom parity)**: per-actuator settings step
   sending D2-01 CMD 0x2 Actuator Set Local (local button enable/disable,
   switch vs toggle mode, power-failure default state), verified against the
