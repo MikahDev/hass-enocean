@@ -117,6 +117,72 @@ async def test_pairing_timeout_aborts(
     assert entry.options.get(CONF_DEVICES, []) == []
 
 
+async def test_menu_pairing_one_press(hass: HomeAssistant, dongle: FakeDongle) -> None:
+    """Configure menu > Pair a new device: window first, one LRN press."""
+    entry = make_entry(hass, [ACTUATOR])  # offset 0 in use -> allocate +1
+    assert await setup_entry(hass, entry)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "pair_device"}
+    )
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
+
+    # the single teach-in press: the window is already open
+    dongle.inject(ute_teach_in_frame(NEW_COVER, 0xD2, 0x05, 0x00))
+    await flush(hass)
+
+    # answered from the allocated sender, and no discovery card was created
+    assert len(dongle.sent_radio) == 1
+    assert dongle.sent_radio[0][0][8:12] == bytes.fromhex("FF974101")
+    assert not [
+        flow
+        for flow in hass.config_entries.flow.async_progress()
+        if flow["handler"] == DOMAIN
+    ]
+
+    result = await hass.config_entries.options.async_configure(result["flow_id"])
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "pair_name"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"name": "Kitchen blind"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+
+    assert entry.options[CONF_DEVICES][-1] == {
+        "address": NEW_COVER_HEX,
+        "eep": "D2-05-00",
+        "name": "Kitchen blind",
+        "sender_id": "FF974101",
+        "channel": 0,
+    }
+    assert hass.states.get("cover.kitchen_blind") is not None
+
+
+async def test_menu_pairing_unsupported_eep_aborts(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """An EEP the library knows but this integration does not exposes nothing."""
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "pair_device"}
+    )
+    assert result["type"] is FlowResultType.SHOW_PROGRESS
+
+    dongle.inject(ute_teach_in_frame(NEW_COVER, 0xD2, 0x20, 0x02))
+    await flush(hass)
+
+    result = await hass.config_entries.options.async_configure(result["flow_id"])
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "pair_unsupported_eep"
+    assert entry.options.get(CONF_DEVICES, []) == []
+
+
 async def test_allocate_sender_skips_used_and_exhausts(hass: HomeAssistant) -> None:
     entry = make_entry(hass, [ACTUATOR])  # offset 0 in use
     hub = EnOceanHub(hass, entry)

@@ -67,6 +67,7 @@
         "title": "Appareils EnOcean",
         "menu_options": {
           "inbox": "Boite de reception radio",
+          "pair_device": "Appairer un nouvel appareil",
           "add_manual": "Ajouter un appareil manuellement",
           "manage": "Gerer les appareils configures",
           "import_devices": "Importer un inventaire",
@@ -96,6 +97,14 @@
         "data": {
           "sender_id": "Sender ID du controleur",
           "channel": "Canal radio (0 = Canal 1)"
+        }
+      },
+      "pair_name": {
+        "title": "Appareil appaire",
+        "description": "L'appareil {address} a ete appaire avec le profil {eep} et le sender ID {sender_id}. Donnez-lui un nom pour terminer.",
+        "data": {
+          "name": "Nom",
+          "area_id": "Piece (optionnel)"
         }
       },
       "manage": {
@@ -135,7 +144,15 @@
     "abort": {
       "inbox_empty": "Aucun emetteur non configure n'a encore ete entendu.",
       "no_devices": "Aucun appareil n'est configure.",
-      "not_loaded": "La passerelle n'est pas demarree."
+      "not_loaded": "La passerelle n'est pas demarree.",
+      "not_connected": "La passerelle EnOcean n'est pas connectee.",
+      "already_configured": "Cet appareil est deja configure.",
+      "pair_timeout": "Aucun teach-in n'a ete recu a temps. Relancez l'appairage et appuyez sur le bouton teach-in pendant la fenetre.",
+      "pair_no_free_sender": "Les 127 sender ID de la plage Base ID du transceiver sont tous utilises ; l'appairage ne peut pas en attribuer.",
+      "pair_unsupported_eep": "L'appareil a annonce un profil non pris en charge par cette integration. Consultez la boite de reception radio pour voir l'EEP declare."
+    },
+    "progress": {
+      "pair_waiting_any": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil. La passerelle repondra au premier teach-in entendu avec un sender ID nouvellement attribue."
     }
   },
   "device_automation": {

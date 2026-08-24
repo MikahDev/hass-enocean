@@ -12,7 +12,8 @@ ordered roughly by value; nothing here is committed to a date.
   pre-filled; everything else still requires the user to pick the EEP, never
   guessed. Includes de-duplication against configured devices and an
   ignore list.
-- [x] **Guided pairing (Jeedom-style)** (v0.4.0): a "Pair" path on the discovery
+- [x] **Guided pairing (Jeedom-style)** (v0.4.0; v0.5.0 adds one-press pairing
+  from the Configure menu, window first): a "Pair" path on the discovery
   card for NEW devices: automatically allocate the first free Base ID+offset
   sender (library sender-slot tracking), answer the UTE teach-in with it,
   and store it, so the user never types a sender ID for newly paired

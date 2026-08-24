@@ -85,9 +85,11 @@ C4. Operate the actuator's physical button once; HA must follow the state
 Each step requires separate explicit approval and someone physically at the
 device. Do not run Phase E until Phases A-C have passed.
 
-E1. Guided pairing of the D2-05-00 blinds actuator: trigger its teach-in
-    (LRN) button, open the discovery card, choose Pair, and press LRN again
-    within the 60 s window.
+E1. Guided pairing of the D2-05-00 blinds actuator, either path:
+    discovery card (press LRN, open the card, choose Pair, press LRN again
+    within the 60 s window) or one-press (Configure > Pair a new device,
+    then press LRN once; the window answers the first teach-in heard, so
+    make sure no other device is teaching in).
     Pass: the card completes with an allocated sender (Base ID + first free
     offset) stored in the device attributes; the actuator confirms the
     teach-in per its manual (LED/beep). Fail: the window times out; do not

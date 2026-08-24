@@ -32,10 +32,12 @@ FR/EN translations.
 - **Sender IDs are explicit or paired.** For a device migrated from another
   controller you enter the sender ID it already knows (the transceiver Base ID
   is proposed as a default), so validated historical associations survive. For
-  a NEW device, guided pairing from its discovery card allocates the first
-  free Base ID+offset sender and answers the device's next teach-in with it;
-  the pairing window is time-bounded and focused on that one device. Sender
-  IDs outside Base ID..Base ID+127 are rejected everywhere.
+  a NEW device, guided pairing allocates the first free Base ID+offset sender
+  and answers the device's teach-in with it: either from its discovery card
+  (window focused on that device, second teach-in press needed) or via
+  Configure > "Pair a new device" (window opens first, one teach-in press,
+  first device heard wins). Both windows are time-bounded. Sender IDs outside
+  Base ID..Base ID+127 are rejected everywhere.
 - **Addresses are exact.** Radio addresses are 8 hex digits; leading zeroes
   are preserved and required.
 - **No fake state.** A switch is "assumed" until the actuator's own status

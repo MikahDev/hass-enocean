@@ -191,7 +191,7 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
                 description_placeholders={"address": address},
             )
         try:
-            sender_id = self._pair_task.result()
+            _, _, sender_id = self._pair_task.result()
         except PairingError as err:
             self._pair_error = err.reason
             return self.async_show_progress_done(next_step_id="pair_failed")

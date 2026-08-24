@@ -1,7 +1,8 @@
-"""Options flow: radio inbox, manual add, manage, import and export."""
+"""Options flow: radio inbox, pairing, manual add, manage, import and export."""
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import voluptuous as vol
@@ -54,6 +55,8 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         self._pending: dict[str, Any] = {}
         self._import_records: list[DeviceRecord] | None = None
         self._remove_address: str | None = None
+        self._pair_task: asyncio.Task | None = None
+        self._pair_error: str | None = None
 
     # ------------------------------------------------------------------
     # helpers
@@ -83,12 +86,82 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             step_id="init",
             menu_options=[
                 "inbox",
+                "pair_device",
                 "add_manual",
                 "manage",
                 "import_devices",
                 "export_devices",
             ],
         )
+
+    # ------------------------------------------------------------------
+    # one-press pairing: window first, then a single teach-in press
+    # ------------------------------------------------------------------
+    async def async_step_pair_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        from .gateway import PairingError
+
+        if self._pair_task is None:
+            hub = getattr(self.config_entry, "runtime_data", None)
+            if hub is None or hub.gateway is None:
+                return self.async_abort(reason="not_loaded")
+            self._pair_task = self.hass.async_create_task(hub.async_pair())
+        if not self._pair_task.done():
+            return self.async_show_progress(
+                step_id="pair_device",
+                progress_action="pair_waiting_any",
+                progress_task=self._pair_task,
+            )
+        try:
+            address, eep, sender_id = self._pair_task.result()
+        except PairingError as err:
+            self._pair_error = err.reason
+            return self.async_show_progress_done(next_step_id="pair_failed")
+        finally:
+            self._pair_task = None
+        if address in self._addresses:
+            self._pair_error = "already_configured"
+            return self.async_show_progress_done(next_step_id="pair_failed")
+        self._pending = {
+            KEY_ADDRESS: address,
+            KEY_EEP: eep,
+            KEY_SENDER_ID: sender_id,
+        }
+        return self.async_show_progress_done(next_step_id="pair_name")
+
+    async def async_step_pair_name(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            record = DeviceRecord(
+                address=self._pending[KEY_ADDRESS],
+                eep=self._pending[KEY_EEP],
+                name=user_input[KEY_NAME].strip() or self._pending[KEY_ADDRESS],
+                sender_id=self._pending[KEY_SENDER_ID],
+                channel=0,
+                area_id=user_input.get(KEY_AREA),
+            )
+            return self._save([*self._raw_devices, record.as_dict()])
+        return self.async_show_form(
+            step_id="pair_name",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(KEY_NAME, default=""): TextSelector(),
+                    vol.Optional(KEY_AREA): AreaSelector(),
+                }
+            ),
+            description_placeholders={
+                "address": self._pending[KEY_ADDRESS],
+                "eep": self._pending[KEY_EEP],
+                "sender_id": self._pending[KEY_SENDER_ID],
+            },
+        )
+
+    async def async_step_pair_failed(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return self.async_abort(reason=self._pair_error or "pair_timeout")
 
     async def async_step_inbox(
         self, user_input: dict[str, Any] | None = None

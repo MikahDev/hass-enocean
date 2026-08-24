@@ -101,7 +101,9 @@ class EnOceanHub:
         self.connected = False
         self.base_id: str | None = entry.data.get(CONF_BASE_ID)
         self._stopped = False
-        self._pairing: dict[str, asyncio.Future[None]] = {}
+        # Pairing waiters keyed by address; "*" is an unfocused menu-pairing
+        # window that accepts the first device heard.
+        self._pairing: dict[str, asyncio.Future[tuple[str, str]]] = {}
 
     async def async_start(self) -> None:
         """Open the serial port and register configured devices.
@@ -184,8 +186,13 @@ class EnOceanHub:
             # A teach-in is a deliberate user action: surface a native
             # discovery card. Data telegrams stay in the inbox so foreign
             # devices don't spam discovery. Base-range senders are other
-            # controllers, not devices.
-            if declared_eep in SUPPORTED_EEPS and int(address, 16) <= EURID_MAX:
+            # controllers, not devices. While an unfocused pairing window is
+            # open, the teach-in belongs to that flow, not to a new card.
+            if (
+                declared_eep in SUPPORTED_EEPS
+                and int(address, 16) <= EURID_MAX
+                and "*" not in self._pairing
+            ):
                 discovery_flow.async_create_flow(
                     self.hass,
                     DOMAIN,
@@ -377,34 +384,49 @@ class EnOceanHub:
             raise PairingError("pair_no_free_sender")
         return f"{base + offset:08X}"
 
-    async def async_pair(self, address: str) -> str:
-        """Answer the device's next UTE teach-in with a freshly allocated
-        sender ID. Blocks until the device is taught in, then returns the
-        sender. Raises PairingError on timeout or when no slot is free."""
+    async def async_pair(self, address: str | None = None) -> tuple[str, str, str]:
+        """Open a pairing window and answer the next UTE teach-in with a
+        freshly allocated sender ID. Focused on one device when address is
+        given (discovery card), otherwise the first device heard (menu
+        pairing). Returns (address, eep, sender_id); raises PairingError on
+        timeout, exhausted sender pool, or an unsupported profile."""
         gateway = self.gateway
         if gateway is None or not self.connected:
             raise PairingError("not_connected")
         sender_id = self.allocate_sender()
-        future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
-        self._pairing[address] = future
+        key = address or "*"
+        future: asyncio.Future[tuple[str, str]] = (
+            asyncio.get_running_loop().create_future()
+        )
+        self._pairing[key] = future
         await gateway.start_learning(
             timeout=PAIRING_TIMEOUT,
             sender_id=BaseAddress(int(sender_id, 16)),
-            for_device=EURID(int(address, 16)),
+            for_device=EURID(int(address, 16)) if address is not None else None,
         )
         try:
             async with asyncio.timeout(PAIRING_TIMEOUT):
-                await future
+                taught_address, eep = await future
         except TimeoutError:
             raise PairingError("pair_timeout") from None
         finally:
-            self._pairing.pop(address, None)
+            self._pairing.pop(key, None)
             if self.gateway is not None:
                 self.gateway.stop_learning()
-        return sender_id
+        if eep not in SUPPORTED_EEPS:
+            # The library already answered the teach-in (it knows more EEPs
+            # than this integration exposes); nothing is stored though.
+            _LOGGER.warning(
+                "Pairing: device %s declared unsupported EEP %s", taught_address, eep
+            )
+            raise PairingError("pair_unsupported_eep")
+        return taught_address, eep, sender_id
 
     @callback
     def _on_taught_in(self, address: Any, eep: Any) -> None:
-        future = self._pairing.get(f"{int(address):08X}")
+        address_hex = f"{int(address):08X}"
+        future = self._pairing.get(address_hex) or self._pairing.get("*")
         if future is not None and not future.done():
-            future.set_result(None)
+            future.set_result(
+                (address_hex, f"{eep.rorg:02X}-{eep.func:02X}-{eep.type:02X}")
+            )

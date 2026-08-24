@@ -67,6 +67,7 @@
         "title": "EnOcean devices",
         "menu_options": {
           "inbox": "Radio inbox",
+          "pair_device": "Pair a new device",
           "add_manual": "Add a device manually",
           "manage": "Manage configured devices",
           "import_devices": "Import an inventory",
@@ -96,6 +97,14 @@
         "data": {
           "sender_id": "Controller sender ID",
           "channel": "Radio channel (0 = Channel 1)"
+        }
+      },
+      "pair_name": {
+        "title": "Device paired",
+        "description": "Device {address} was paired with profile {eep} and sender ID {sender_id}. Give it a name to finish.",
+        "data": {
+          "name": "Name",
+          "area_id": "Room (optional)"
         }
       },
       "manage": {
@@ -135,7 +144,15 @@
     "abort": {
       "inbox_empty": "No unconfigured senders have been heard yet.",
       "no_devices": "No devices are configured.",
-      "not_loaded": "The gateway is not running."
+      "not_loaded": "The gateway is not running.",
+      "not_connected": "The EnOcean gateway is not connected.",
+      "already_configured": "This device is already configured.",
+      "pair_timeout": "No teach-in was received in time. Start pairing again and press the teach-in button within the window.",
+      "pair_no_free_sender": "All 127 sender IDs of the transceiver Base ID range are in use; pairing cannot allocate one.",
+      "pair_unsupported_eep": "The device announced a profile this integration does not support. See the radio inbox for the declared EEP."
+    },
+    "progress": {
+      "pair_waiting_any": "Press the teach-in (LRN) button on the device now. The gateway will answer the first teach-in it hears with a freshly allocated sender ID."
     }
   },
   "device_automation": {
