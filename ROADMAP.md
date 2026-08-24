@@ -18,10 +18,21 @@ ordered roughly by value; nothing here is committed to a date.
   CMD 0x4/0xD status responses. Transmits configuration to physical
   equipment: first live use goes through the same supervised gate as the
   relay test in docs/live-validation.md.
-- [ ] **More EEPs from the Jeedom inventory**: add profiles as needed
-  (candidates: A5-04-01 temperature/humidity, F6-10-00 window handle,
-  D2-01-0B metering actuator). One profile per PR, with telegram fixtures
-  and tests first.
+- [ ] **EEP expansion, wave 1 — D2-05-00 cover** (owned hardware): native
+  `cover` entity via the library's D2-05 handler (position, stop, status
+  feedback), same explicit sender-ID rules as D2-01. Transmits: first live
+  movement goes through a supervised gate like the relay test.
+- [ ] **EEP expansion, wave 2 — receive-only sensors** (safe, no TX):
+  profiles the enocean-async library decodes, exposed as native sensors:
+  A5-02-xx temperature, A5-04-xx temperature/humidity, A5-06-xx light,
+  A5-07-03 occupancy, A5-08-xx, A5-10-xx room panels, A5-12-00..03
+  metering, F6-10-00 window handle. Fixture-tested per profile.
+- [ ] **EEP expansion, wave 3 — remaining actuators**: other D2-01 types
+  (incl. metering variants as power/energy sensors), D2-20-02, A5-20-01
+  valve, A5-38-08 central command / Eltako dimmers.
+- Non-goal: a generic EEP database covering the whole EnOcean catalogue.
+  Profiles are added individually with telegram fixtures and tests; that is
+  what keeps semantics (like the D5 contact polarity) verifiably correct.
 
 ## Exploration
 
