@@ -7,6 +7,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlowWithReload
 from homeassistant.helpers.selector import (
+    AreaSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -25,6 +26,7 @@ from .const import (
     EEP_CHANNEL_COUNT,
     EURID_MAX,
     KEY_ADDRESS,
+    KEY_AREA,
     KEY_CHANNEL,
     KEY_EEP,
     KEY_NAME,
@@ -150,6 +152,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                     KEY_ADDRESS: address,
                     KEY_EEP: user_input[KEY_EEP],
                     KEY_NAME: user_input[KEY_NAME].strip() or address,
+                    KEY_AREA: user_input.get(KEY_AREA),
                 }
                 if user_input[KEY_EEP] == EEP_ACTUATOR:
                     return await self.async_step_actuator()
@@ -157,6 +160,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                     address=address,
                     eep=user_input[KEY_EEP],
                     name=self._pending[KEY_NAME],
+                    area_id=self._pending[KEY_AREA],
                 )
                 return self._save([*self._raw_devices, record.as_dict()])
 
@@ -170,6 +174,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                     KEY_EEP, default=defaults.get(KEY_EEP, SUPPORTED_EEPS[0])
                 ): _EEP_SELECTOR,
                 vol.Required(KEY_NAME, default=""): TextSelector(),
+                vol.Optional(KEY_AREA): AreaSelector(),
             }
         )
         return self.async_show_form(
@@ -198,6 +203,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                     name=self._pending[KEY_NAME],
                     sender_id=sender_id,
                     channel=int(user_input[KEY_CHANNEL]),
+                    area_id=self._pending.get(KEY_AREA),
                 )
                 return self._save([*self._raw_devices, record.as_dict()])
 

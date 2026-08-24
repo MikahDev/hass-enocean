@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 
 from .const import DOMAIN, PLATFORMS
@@ -58,14 +59,26 @@ def _sync_device_registry(
     entities, so they need explicit registry entries for device triggers)
     and remove entries for devices no longer configured."""
     registry = dr.async_get(hass)
+    areas = ar.async_get(hass)
     for record in hub.devices.values():
-        registry.async_get_or_create(
+        existing = registry.async_get_device(identifiers={(DOMAIN, record.address)})
+        device = registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={(DOMAIN, record.address)},
             name=record.name,
             manufacturer="EnOcean",
             model=record.eep,
         )
+        # Apply the chosen area only on first creation, so a room the user
+        # later changes (or clears) in the UI is never overwritten on reload.
+        # Unknown area ids (e.g. imported from another installation) are
+        # skipped silently.
+        if (
+            existing is None
+            and record.area_id
+            and areas.async_get_area(record.area_id) is not None
+        ):
+            registry.async_update_device(device.id, area_id=record.area_id)
     configured = {(DOMAIN, address) for address in hub.devices}
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         if not (device.identifiers & configured):

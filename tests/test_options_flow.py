@@ -296,3 +296,69 @@ async def test_unknown_sender_never_guessed(
     assert item is not None
     assert item.eep is None  # data telegram carries no EEP: never guessed
     assert item.telegram_type == "4BS"
+
+
+async def test_add_with_area(hass: HomeAssistant, dongle: FakeDongle) -> None:
+    """The chosen room is applied at creation and never re-applied after the
+    user moves or clears it in the UI."""
+    from homeassistant.helpers import area_registry as ar
+
+    area = ar.async_get(hass).async_create("Kitchen")
+    other = ar.async_get(hass).async_create("Garage")
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+
+    result = await _menu(hass, entry, "add_manual")
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "address": "0084ACF3",
+            "eep": "D5-00-01",
+            "name": "Door",
+            "area_id": area.id,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+
+    registry = dr.async_get(hass)
+    device = registry.async_get_device(identifiers={(DOMAIN, "0084ACF3")})
+    assert device.area_id == area.id
+
+    # the user moves the device to another room; a reload must not undo it
+    registry.async_update_device(device.id, area_id=other.id)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    device = registry.async_get_device(identifiers={(DOMAIN, "0084ACF3")})
+    assert device.area_id == other.id
+
+
+async def test_import_with_unknown_area_skipped(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """An area id from another installation is stored but not applied."""
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    result = await _menu(hass, entry, "import_devices")
+    doc = json.dumps(
+        {
+            "version": 1,
+            "devices": [
+                {
+                    "address": "0084ACF3",
+                    "eep": "D5-00-01",
+                    "name": "Door",
+                    "area_id": "no_such_area",
+                }
+            ],
+        }
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"document": doc}
+    )
+    assert result["step_id"] == "import_confirm"
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    await hass.async_block_till_done()
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "0084ACF3")})
+    assert device is not None
+    assert device.area_id is None

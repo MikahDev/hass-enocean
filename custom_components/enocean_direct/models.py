@@ -19,6 +19,7 @@ from .const import (
     EURID_MAX,
     IMPORT_SCHEMA_VERSION,
     KEY_ADDRESS,
+    KEY_AREA,
     KEY_CHANNEL,
     KEY_EEP,
     KEY_NAME,
@@ -67,6 +68,7 @@ class DeviceRecord:
     name: str
     sender_id: str | None = None  # actuators only
     channel: int | None = None  # actuators only, radio channel (0-based)
+    area_id: str | None = None  # HA area, applied when the device is created
 
     @property
     def kind(self) -> str:
@@ -91,6 +93,8 @@ class DeviceRecord:
             out[KEY_SENDER_ID] = self.sender_id
         if self.channel is not None:
             out[KEY_CHANNEL] = self.channel
+        if self.area_id is not None:
+            out[KEY_AREA] = self.area_id
         return out
 
 
@@ -102,6 +106,7 @@ def record_from_dict(raw: dict[str, Any]) -> DeviceRecord:
         name=raw[KEY_NAME],
         sender_id=raw.get(KEY_SENDER_ID),
         channel=raw.get(KEY_CHANNEL),
+        area_id=raw.get(KEY_AREA),
     )
 
 
@@ -130,6 +135,14 @@ def validate_record(
         return None, errors
 
     name = str(raw.get(KEY_NAME) or "").strip() or address
+
+    area_id: str | None = None
+    raw_area = raw.get(KEY_AREA)
+    if raw_area is not None:
+        if not isinstance(raw_area, str) or not raw_area.strip():
+            errors.append(f"{address}: area_id must be a non-empty string")
+        else:
+            area_id = raw_area
 
     sender_id: str | None = None
     channel: int | None = None
@@ -172,7 +185,7 @@ def validate_record(
 
     if errors:
         return None, errors
-    return DeviceRecord(address, eep, name, sender_id, channel), []
+    return DeviceRecord(address, eep, name, sender_id, channel, area_id), []
 
 
 @dataclass(frozen=True)

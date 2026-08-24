@@ -173,3 +173,24 @@ async def test_ignored_device_stays_ignored(
     dongle.inject(d5_frame(NEW_CONTACT, closed=False, teach_in=True))
     await hass.async_block_till_done()
     assert _discovery_flows(hass) == []
+
+
+async def test_discovery_with_area(hass: HomeAssistant, dongle: FakeDongle) -> None:
+    from homeassistant.helpers import area_registry as ar
+    from homeassistant.helpers import device_registry as dr
+
+    area = ar.async_get(hass).async_create("Porch")
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    dongle.inject(d5_frame(NEW_CONTACT, closed=False, teach_in=True))
+    await hass.async_block_till_done()
+    flow = _discovery_flows(hass)[0]
+
+    result = await hass.config_entries.flow.async_configure(
+        flow["flow_id"], {"name": "Porch door", "area_id": area.id}
+    )
+    assert result["reason"] == "device_added"
+    await hass.async_block_till_done()
+
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "0084AAAA")})
+    assert device.area_id == area.id

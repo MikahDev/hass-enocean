@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.selector import (
+    AreaSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -31,6 +32,7 @@ from .const import (
     EEP_ACTUATOR,
     EEP_CHANNEL_COUNT,
     KEY_ADDRESS,
+    KEY_AREA,
     KEY_CHANNEL,
     KEY_EEP,
     KEY_NAME,
@@ -136,13 +138,17 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
             self._discovered[KEY_NAME] = (
                 user_input[KEY_NAME].strip() or self._discovered[KEY_ADDRESS]
             )
+            self._discovered[KEY_AREA] = user_input.get(KEY_AREA)
             if self._discovered[KEY_EEP] == EEP_ACTUATOR:
                 return await self.async_step_discovered_actuator()
             return self._async_add_discovered_device()
         return self.async_show_form(
             step_id="discovered_device",
             data_schema=vol.Schema(
-                {vol.Required(KEY_NAME, default=""): TextSelector()}
+                {
+                    vol.Required(KEY_NAME, default=""): TextSelector(),
+                    vol.Optional(KEY_AREA): AreaSelector(),
+                }
             ),
             description_placeholders={
                 "address": self._discovered[KEY_ADDRESS],

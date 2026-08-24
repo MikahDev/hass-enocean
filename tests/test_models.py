@@ -133,6 +133,23 @@ def test_validate_rejects_non_eurid_device_address() -> None:
     assert any("not a device address" in error for error in errors)
 
 
+def test_validate_area() -> None:
+    record, errors = validate_record(
+        {"address": "0084ACF3", "eep": "D5-00-01", "area_id": "kitchen"},
+        BASE,
+        set(),
+    )
+    assert errors == []
+    assert record.area_id == "kitchen"
+    assert record.as_dict()["area_id"] == "kitchen"
+
+    for bad in ("", "   ", 5):
+        record, errors = validate_record(
+            {"address": "0084ACF3", "eep": "D5-00-01", "area_id": bad}, BASE, set()
+        )
+        assert record is None, bad
+
+
 def test_validate_unknown_eep_and_duplicate() -> None:
     record, errors = validate_record(
         {"address": "0084ACF3", "eep": "A5-02-05"}, BASE, set()
@@ -232,7 +249,7 @@ def test_import_bad_documents() -> None:
 # ---------------------------------------------------------------- export
 def test_export_roundtrip() -> None:
     records = [
-        DeviceRecord("0084ACF3", "D5-00-01", "Door"),
+        DeviceRecord("0084ACF3", "D5-00-01", "Door", area_id="kitchen"),
         DeviceRecord("050A5C20", "D2-01-0F", "Relay", "FF974100", 0),
     ]
     exported = build_export(records, BASE)

@@ -19,7 +19,8 @@
         "title": "Discovered EnOcean device",
         "description": "Device {address} announced itself with profile {eep} (teach-in). Give it a name to add it. No teach-in response is sent.",
         "data": {
-          "name": "Name"
+          "name": "Name",
+          "area_id": "Room (optional)"
         }
       },
       "discovered_actuator": {
@@ -70,7 +71,8 @@
         "data": {
           "address": "Radio address (8 hex digits)",
           "eep": "EEP profile",
-          "name": "Name"
+          "name": "Name",
+          "area_id": "Room (optional)"
         }
       },
       "actuator": {

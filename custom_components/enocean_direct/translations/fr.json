@@ -19,7 +19,8 @@
         "title": "Appareil EnOcean detecte",
         "description": "L'appareil {address} s'est annonce avec le profil {eep} (appairage). Donnez-lui un nom pour l'ajouter. Aucune reponse d'appairage n'est envoyee.",
         "data": {
-          "name": "Nom"
+          "name": "Nom",
+          "area_id": "Piece (optionnel)"
         }
       },
       "discovered_actuator": {
@@ -70,7 +71,8 @@
         "data": {
           "address": "Adresse radio (8 chiffres hexadecimaux)",
           "eep": "Profil EEP",
-          "name": "Nom"
+          "name": "Nom",
+          "area_id": "Piece (optionnel)"
         }
       },
       "actuator": {
