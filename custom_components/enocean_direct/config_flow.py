@@ -10,6 +10,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import (
     ConfigEntry,
+    ConfigEntryState,
     ConfigFlow,
     ConfigFlowResult,
 )
@@ -280,17 +281,24 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             path = user_input[CONF_DEVICE_PATH].strip()
+            entry = self._get_reconfigure_entry() if reconfigure else None
+            if entry is not None and entry.state is ConfigEntryState.LOADED:
+                # Release the serial port first, so re-validating the same
+                # (or the same physical) transceiver does not fail while the
+                # running entry holds the descriptor.
+                await self.hass.config_entries.async_unload(entry.entry_id)
             try:
                 base_id = await validate_gateway(self.hass, path)
             except ConnectionError as err:
                 _LOGGER.warning("Cannot connect to %s: %s", path, err)
                 errors["base"] = "cannot_connect"
+                if entry is not None:
+                    # Put the previous configuration back in service.
+                    self.hass.config_entries.async_schedule_reload(entry.entry_id)
             else:
                 data = {CONF_DEVICE_PATH: path, CONF_BASE_ID: base_id}
                 if reconfigure:
-                    return self.async_update_reload_and_abort(
-                        self._get_reconfigure_entry(), data=data
-                    )
+                    return self.async_update_reload_and_abort(entry, data=data)
                 return self.async_create_entry(
                     title=f"EnOcean gateway {base_id}", data=data
                 )

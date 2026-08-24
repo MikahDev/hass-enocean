@@ -137,11 +137,12 @@ async def test_inbox_lists_and_prefills(
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
 
-    # saving reloaded the entry; the inbox is in-memory by design and resets,
-    # so the configured contact can never reappear in it
+    # saving reloaded the entry; the inbox persists across reloads, still
+    # listing the unconfigured rocker but never the just-added contact
     result = await _menu(hass, entry, "inbox")
-    assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "inbox_empty"
+    assert result["type"] is FlowResultType.FORM
+    options = result["data_schema"].schema["address"].config["options"]
+    assert [opt["value"] for opt in options] == ["002909BE"]
 
 
 async def test_inbox_shows_ute_declared_eep(

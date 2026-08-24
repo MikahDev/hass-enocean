@@ -52,6 +52,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: EnOceanConfigEntry) -> 
     return unload_ok
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Drop the reload-persistent radio inbox when the entry is deleted."""
+    hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_inbox", None)
+
+
 def _sync_device_registry(
     hass: HomeAssistant, entry: EnOceanConfigEntry, hub: EnOceanHub
 ) -> None:

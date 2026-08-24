@@ -85,6 +85,7 @@ class FakeDongle:
         self.transports: list[FakeTransport] = []
         self.connect_count = 0
         self.fail_connect = False
+        self.fail_next_connect = False  # one-shot variant
         self.respond_to_common = True
         self.respond_to_radio = True
         self.radio_return_code = 0x00  # RET_OK
@@ -93,6 +94,13 @@ class FakeDongle:
     async def create(self, loop, protocol_factory, port, baudrate=57600, **kwargs):
         if self.fail_connect:
             raise OSError(f"could not open port {port}")
+        if self.fail_next_connect:
+            self.fail_next_connect = False
+            raise OSError(f"could not open port {port}")
+        if any(not transport.closed for transport in self.transports):
+            # Real serial ports are exclusive: a second open must fail while
+            # another descriptor is held.
+            raise OSError(f"port {port} is busy")
         self.connect_count += 1
         protocol = protocol_factory()
         transport = FakeTransport(self, protocol)

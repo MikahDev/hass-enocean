@@ -77,3 +77,40 @@ async def test_single_instance(hass: HomeAssistant, dongle: FakeDongle) -> None:
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "single_instance_allowed"
+
+
+async def test_reconfigure_same_path(hass: HomeAssistant, dongle: FakeDongle) -> None:
+    """Re-validating the path the running entry holds must succeed: the
+    entry releases the port for the probe (real serial ports are exclusive)."""
+    from homeassistant.config_entries import ConfigEntryState
+
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_DEVICE_PATH: PORT}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+
+
+async def test_reconfigure_failure_restores_entry(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """A failed probe must put the previous configuration back in service."""
+    from homeassistant.config_entries import ConfigEntryState
+
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    result = await entry.start_reconfigure_flow(hass)
+    dongle.fail_next_connect = True  # only the probe fails
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_DEVICE_PATH: "/dev/ttyUSB9"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.data[CONF_DEVICE_PATH] == PORT  # unchanged

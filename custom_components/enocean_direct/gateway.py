@@ -123,7 +123,14 @@ class EnOceanHub:
             raw["address"]: record_from_dict(raw)
             for raw in entry.options.get(CONF_DEVICES, [])
         }
-        self.inbox = RadioInbox()
+        # The inbox lives in hass.data so it survives entry reloads (adding a
+        # device reloads the entry). Still in-memory only, per design.
+        domain_data = hass.data.setdefault(DOMAIN, {})
+        self.inbox: RadioInbox = domain_data.setdefault(
+            f"{entry.entry_id}_inbox", RadioInbox()
+        )
+        for address in self.devices:
+            self.inbox.mark_configured(address)
         self.gateway: Gateway | None = None
         self.connected = False
         self.base_id: str | None = entry.data.get(CONF_BASE_ID)

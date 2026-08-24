@@ -66,10 +66,11 @@ ordered roughly by value; nothing here is committed to a date.
   `ignore: brands` from the HACS CI check.
 - [ ] Consider submitting to the HACS default store once the integration has
   settled.
-- [ ] Persist the radio inbox across reloads (currently in-memory by design).
+- [x] Persist the radio inbox across reloads (v0.9.0; still in-memory only,
+  not across restarts).
 - [x] Parse 4BS teach-in profiles for inbox display (v0.7.0, with wave 2).
-- [ ] Friendlier reconfigure: re-validating the same serial path fails with
-  `cannot_connect` while the entry holds the port.
+- [x] Friendlier reconfigure (v0.9.0): the entry releases the port before
+  probing, and a failed probe puts the previous configuration back in service.
 - [ ] Known ceiling (upstream): some wave-2 specs carry availability/presence
   flags (A5-04 TSN, A5-06-04 TMPAV/ENAV, A5-10-1F TMP_F/SP_F/FAN_F) that
   enocean-async decodes but does not gate on, so an unpopulated field can

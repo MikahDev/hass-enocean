@@ -102,3 +102,17 @@ async def test_ha_stop_releases_port(hass: HomeAssistant, dongle: FakeDongle) ->
     hass.bus.async_fire(EVENT_HOMEASSISTANT_STOP)
     await hass.async_block_till_done()
     assert dongle.transport.closed
+
+
+async def test_inbox_persists_across_reload(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    entry = make_entry(hass)
+    assert await setup_entry(hass, entry)
+    dongle.inject(d5_frame(0x0084AAAA, closed=True))  # unconfigured sender
+    await hass.async_block_till_done()
+    assert entry.runtime_data.inbox.get("0084AAAA") is not None
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert entry.runtime_data.inbox.get("0084AAAA") is not None
