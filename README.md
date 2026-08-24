@@ -21,20 +21,26 @@ FR/EN translations.
 | D5-00-01 | Single-input contact | `binary_sensor` (opening; on = open) |
 | F6-02-01 / F6-02-02 | 2-rocker wall switch | Device triggers (press per button, release) |
 | D2-01-0F | 1-channel relay (e.g. NodOn micromodule) | `switch` with confirmed/assumed state |
+| D2-05-00 | Blinds/shutter actuator | `cover` with position, stop and status feedback |
 
 ## Design rules
 
 - **Passive by default.** The integration only transmits for configured
-  D2-01 switch entities. There is no teach-in mode, no learn service and no
+  D2-01 switch and D2-05 cover entities, plus the teach-in response during
+  guided pairing (see below). There is no open learning mode and no
   arbitrary-packet API.
-- **Sender IDs are explicit.** For actuators you enter the controller sender
-  ID the device already knows (the transceiver Base ID is proposed as a
-  default). Sender IDs outside Base ID..Base ID+127 are rejected. Nothing is
-  ever allocated automatically, so validated historical associations survive.
+- **Sender IDs are explicit or paired.** For a device migrated from another
+  controller you enter the sender ID it already knows (the transceiver Base ID
+  is proposed as a default), so validated historical associations survive. For
+  a NEW device, guided pairing from its discovery card allocates the first
+  free Base ID+offset sender and answers the device's next teach-in with it;
+  the pairing window is time-bounded and focused on that one device. Sender
+  IDs outside Base ID..Base ID+127 are rejected everywhere.
 - **Addresses are exact.** Radio addresses are 8 hex digits; leading zeroes
   are preserved and required.
 - **No fake state.** A switch is "assumed" until the actuator's own status
-  telegram (D2-01 CMD 0x4) confirms it. Unacknowledged commands raise an
+  telegram (D2-01 CMD 0x4) confirms it; a cover's position is unknown until
+  its first position reply (D2-05 CMD 0x4). Unacknowledged commands raise an
   error instead of flipping the UI.
 - **One serial owner.** The serial descriptor is owned by one gateway object
   per config entry and is released on unload, reload, failed setup, USB

@@ -22,7 +22,6 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
-    EEP_ACTUATOR,
     EEP_CHANNEL_COUNT,
     EURID_MAX,
     KEY_ADDRESS,
@@ -154,7 +153,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                     KEY_NAME: user_input[KEY_NAME].strip() or address,
                     KEY_AREA: user_input.get(KEY_AREA),
                 }
-                if user_input[KEY_EEP] == EEP_ACTUATOR:
+                if user_input[KEY_EEP] in EEP_CHANNEL_COUNT:
                     return await self.async_step_actuator()
                 record = DeviceRecord(
                     address=address,

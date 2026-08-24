@@ -17,10 +17,18 @@
       },
       "discovered_device": {
         "title": "Discovered EnOcean device",
-        "description": "Device {address} announced itself with profile {eep} (teach-in). Give it a name to add it. No teach-in response is sent.",
+        "description": "Device {address} announced itself with profile {eep} (teach-in). Give it a name to add it. No teach-in response has been sent yet.",
         "data": {
           "name": "Name",
           "area_id": "Room (optional)"
+        }
+      },
+      "pair_or_manual": {
+        "title": "Sender ID",
+        "description": "Device {address}. Pairing allocates the first free Base ID sender and answers the device's next teach-in with it. Choose manual entry for a device migrated from another controller: it keeps its historical sender ID.",
+        "menu_options": {
+          "pair": "Pair automatically (allocate a sender, answer the teach-in)",
+          "discovered_actuator": "Enter a sender ID manually"
         }
       },
       "discovered_actuator": {
@@ -42,7 +50,14 @@
       "reconfigure_successful": "Gateway reconfigured.",
       "device_added": "Device added to the EnOcean gateway.",
       "no_gateway": "No EnOcean gateway is configured yet.",
-      "already_configured": "This device is already configured."
+      "already_configured": "This device is already configured.",
+      "not_loaded": "The gateway is not running.",
+      "not_connected": "The EnOcean gateway is not connected.",
+      "pair_timeout": "No teach-in was received from the device in time. Trigger the teach-in on the device to get a new discovery card and try again.",
+      "pair_no_free_sender": "All 127 sender IDs of the transceiver Base ID range are in use; pairing cannot allocate one."
+    },
+    "progress": {
+      "pair_waiting": "Press the teach-in (LRN) button on device {address} now. The gateway will answer its teach-in with the allocated sender ID."
     },
     "flow_title": "{name}"
   },
@@ -77,7 +92,7 @@
       },
       "actuator": {
         "title": "Actuator settings",
-        "description": "Device {address}. The sender ID is the controller identity the actuator already knows; it is proposed from the transceiver Base ID ({base_id}) and must stay within Base ID +127. It is never allocated automatically. Radio channel 0 is Channel 1 on the device.",
+        "description": "Device {address}. The sender ID is the controller identity the actuator already knows; it is proposed from the transceiver Base ID ({base_id}) and must stay within Base ID +127. Guided pairing from a discovery card can allocate one automatically instead. Radio channel 0 is Channel 1 on the device.",
         "data": {
           "sender_id": "Controller sender ID",
           "channel": "Radio channel (0 = Channel 1)"

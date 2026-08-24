@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import glob
 import logging
 from typing import Any
@@ -29,7 +30,6 @@ from .const import (
     CONF_DEVICE_PATH,
     CONF_DEVICES,
     DOMAIN,
-    EEP_ACTUATOR,
     EEP_CHANNEL_COUNT,
     KEY_ADDRESS,
     KEY_AREA,
@@ -89,6 +89,8 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
 
     def __init__(self) -> None:
         self._discovered: dict[str, Any] = {}
+        self._pair_task: asyncio.Task | None = None
+        self._pair_error: str | None = None
 
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> EnOceanOptionsFlow:
@@ -139,8 +141,8 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
                 user_input[KEY_NAME].strip() or self._discovered[KEY_ADDRESS]
             )
             self._discovered[KEY_AREA] = user_input.get(KEY_AREA)
-            if self._discovered[KEY_EEP] == EEP_ACTUATOR:
-                return await self.async_step_discovered_actuator()
+            if self._discovered[KEY_EEP] in EEP_CHANNEL_COUNT:
+                return await self.async_step_pair_or_manual()
             return self._async_add_discovered_device()
         return self.async_show_form(
             step_id="discovered_device",
@@ -155,6 +157,59 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
                 "eep": self._discovered[KEY_EEP],
             },
         )
+
+    async def async_step_pair_or_manual(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """New actuators can be paired (sender allocated automatically, the
+        teach-in answered) or configured manually with a known sender."""
+        return self.async_show_menu(
+            step_id="pair_or_manual",
+            menu_options=["pair", "discovered_actuator"],
+            description_placeholders={"address": self._discovered[KEY_ADDRESS]},
+        )
+
+    async def async_step_pair(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Guided pairing: allocate the first free sender, open a focused
+        learning window and wait for the device's next teach-in."""
+        from .gateway import PairingError
+
+        address = self._discovered[KEY_ADDRESS]
+        if self._pair_task is None:
+            hub_entry = self._hub_entry()
+            hub = getattr(hub_entry, "runtime_data", None) if hub_entry else None
+            if hub is None or hub.gateway is None:
+                return self.async_abort(reason="not_loaded")
+            self._pair_task = self.hass.async_create_task(hub.async_pair(address))
+        if not self._pair_task.done():
+            return self.async_show_progress(
+                step_id="pair",
+                progress_action="pair_waiting",
+                progress_task=self._pair_task,
+                description_placeholders={"address": address},
+            )
+        try:
+            sender_id = self._pair_task.result()
+        except PairingError as err:
+            self._pair_error = err.reason
+            return self.async_show_progress_done(next_step_id="pair_failed")
+        finally:
+            self._pair_task = None
+        self._discovered[KEY_SENDER_ID] = sender_id
+        self._discovered[KEY_CHANNEL] = 0
+        return self.async_show_progress_done(next_step_id="pair_done")
+
+    async def async_step_pair_done(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return self._async_add_discovered_device()
+
+    async def async_step_pair_failed(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return self.async_abort(reason=self._pair_error or "pair_timeout")
 
     async def async_step_discovered_actuator(
         self, user_input: dict[str, Any] | None = None
@@ -175,7 +230,7 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._discovered[KEY_CHANNEL] = int(user_input[KEY_CHANNEL])
                 return self._async_add_discovered_device()
 
-        max_channel = EEP_CHANNEL_COUNT[EEP_ACTUATOR] - 1
+        max_channel = EEP_CHANNEL_COUNT[self._discovered[KEY_EEP]] - 1
         schema = vol.Schema(
             {
                 vol.Required(KEY_SENDER_ID, default=base_id or ""): TextSelector(),

@@ -35,6 +35,13 @@ ACTUATOR = {
     "sender_id": BASE_ID_HEX,
     "channel": 0,
 }
+COVER = {
+    "address": "051B2C30",
+    "eep": "D2-05-00",
+    "name": "Test blind",
+    "sender_id": "FF974101",
+    "channel": 0,
+}
 
 
 @pytest.fixture(autouse=True)
@@ -197,6 +204,15 @@ def ute_teach_in_frame(
 def d2_status_frame(sender: int, channel: int, output_value: int, **kwargs) -> bytes:
     """D2-01 CMD 0x4 Actuator Status Response."""
     payload = [0x04, channel & 0x1F, output_value & 0x7F]
+    return erp1_frame(0xD2, payload, sender, **kwargs)
+
+
+def d2_05_reply_frame(sender: int, position: int, angle: int = 0, **kwargs) -> bytes:
+    """D2-05 CMD 0x4 Reply position and angle, channel 1.
+
+    Position uses EnOcean polarity: 0 = open, 100 = closed.
+    """
+    payload = [position & 0x7F, angle & 0x7F, 0x00, 0x04]
     return erp1_frame(0xD2, payload, sender, **kwargs)
 
 

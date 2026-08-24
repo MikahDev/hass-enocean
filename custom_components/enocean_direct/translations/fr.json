@@ -17,10 +17,18 @@
       },
       "discovered_device": {
         "title": "Appareil EnOcean detecte",
-        "description": "L'appareil {address} s'est annonce avec le profil {eep} (appairage). Donnez-lui un nom pour l'ajouter. Aucune reponse d'appairage n'est envoyee.",
+        "description": "L'appareil {address} s'est annonce avec le profil {eep} (appairage). Donnez-lui un nom pour l'ajouter. Aucune reponse d'appairage n'a encore ete envoyee.",
         "data": {
           "name": "Nom",
           "area_id": "Piece (optionnel)"
+        }
+      },
+      "pair_or_manual": {
+        "title": "Sender ID",
+        "description": "Appareil {address}. L'appairage attribue le premier sender libre du Base ID et repond au prochain teach-in de l'appareil avec celui-ci. Choisissez la saisie manuelle pour un appareil migre depuis un autre controleur : il conserve son sender ID historique.",
+        "menu_options": {
+          "pair": "Appairer automatiquement (attribuer un sender, repondre au teach-in)",
+          "discovered_actuator": "Saisir un sender ID manuellement"
         }
       },
       "discovered_actuator": {
@@ -42,7 +50,14 @@
       "reconfigure_successful": "Passerelle reconfiguree.",
       "device_added": "Appareil ajoute a la passerelle EnOcean.",
       "no_gateway": "Aucune passerelle EnOcean n'est encore configuree.",
-      "already_configured": "Cet appareil est deja configure."
+      "already_configured": "Cet appareil est deja configure.",
+      "not_loaded": "La passerelle n'est pas demarree.",
+      "not_connected": "La passerelle EnOcean n'est pas connectee.",
+      "pair_timeout": "Aucun teach-in n'a ete recu de l'appareil a temps. Declenchez le teach-in sur l'appareil pour obtenir une nouvelle carte de decouverte et reessayez.",
+      "pair_no_free_sender": "Les 127 sender ID de la plage Base ID du transceiver sont tous utilises ; l'appairage ne peut pas en attribuer."
+    },
+    "progress": {
+      "pair_waiting": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil {address}. La passerelle repondra a son teach-in avec le sender ID attribue."
     },
     "flow_title": "{name}"
   },
@@ -77,7 +92,7 @@
       },
       "actuator": {
         "title": "Reglages de l'actionneur",
-        "description": "Appareil {address}. Le sender ID est l'identite de controleur deja connue de l'actionneur ; il est propose depuis le Base ID du transceiver ({base_id}) et doit rester dans la plage Base ID +127. Il n'est jamais attribue automatiquement. Le canal radio 0 correspond au Canal 1 de l'appareil.",
+        "description": "Appareil {address}. Le sender ID est l'identite de controleur deja connue de l'actionneur ; il est propose depuis le Base ID du transceiver ({base_id}) et doit rester dans la plage Base ID +127. L'appairage guide depuis une carte de decouverte peut en attribuer un automatiquement. Le canal radio 0 correspond au Canal 1 de l'appareil.",
         "data": {
           "sender_id": "Sender ID du controleur",
           "channel": "Canal radio (0 = Canal 1)"

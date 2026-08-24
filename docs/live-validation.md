@@ -80,6 +80,30 @@ C3. Toggle OFF once; same criteria.
 C4. Operate the actuator's physical button once; HA must follow the state
     without any command being sent.
 
+## Phase E - v0.4.0 additions: D2-05-00 cover and guided pairing [TX]
+
+Each step requires separate explicit approval and someone physically at the
+device. Do not run Phase E until Phases A-C have passed.
+
+E1. Guided pairing of the D2-05-00 blinds actuator: trigger its teach-in
+    (LRN) button, open the discovery card, choose Pair, and press LRN again
+    within the 60 s window.
+    Pass: the card completes with an allocated sender (Base ID + first free
+    offset) stored in the device attributes; the actuator confirms the
+    teach-in per its manual (LED/beep). Fail: the window times out; do not
+    retry more than once before checking logs.
+E2. With the blind observed, command Open once, then Stop mid-travel, then
+    Close.
+    Pass: physical movement matches each command; the entity position follows
+    the actuator's CMD 0x4 replies (position appears after the first reply,
+    opening/closing states shown during travel). A UI success without
+    physical movement is a FAIL.
+E3. Set position 50%.
+    Pass: the blind stops near mid-travel and HA settles on the reported
+    position (HA % = 100 - EnOcean %; 100 = open in HA).
+E4. Move the blind from its local control (if fitted); HA must follow without
+    sending any command.
+
 ## Phase D - close-out
 
 D1. If all checks pass: uninstall or leave the MQTT add-on disabled (do not
@@ -91,7 +115,9 @@ D2. If any check fails: stop the enocean_direct entry (disable it), re-enable
 
 ## Explicit non-actions
 
-- No teach-in is performed at any point. The actuator keeps its historical
+- No teach-in is performed in Phases A-D. The relay keeps its historical
   association with sender FF974100.
 - No telegram is transmitted before Phase C, and Phase C sends only the two
   bounded switch commands to the validated relay.
+- The only teach-in response ever sent is the one in E1: user-initiated,
+  focused on the one device being paired, inside a 60 s window.

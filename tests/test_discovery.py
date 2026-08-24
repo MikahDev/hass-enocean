@@ -87,6 +87,12 @@ async def test_ute_actuator_discovery(hass: HomeAssistant, dongle: FakeDongle) -
     result = await hass.config_entries.flow.async_configure(
         flow["flow_id"], {"name": "New relay"}
     )
+    assert result["type"] is FlowResultType.MENU
+    assert result["step_id"] == "pair_or_manual"
+
+    result = await hass.config_entries.flow.async_configure(
+        flow["flow_id"], {"next_step_id": "discovered_actuator"}
+    )
     assert result["step_id"] == "discovered_actuator"
 
     result = await hass.config_entries.flow.async_configure(
@@ -143,12 +149,12 @@ async def test_unsupported_eep_not_discovered(
 ) -> None:
     entry = make_entry(hass)
     assert await setup_entry(hass, entry)
-    dongle.inject(ute_teach_in_frame(0x05AABB01, 0xD2, 0x05, 0x00))  # a cover
+    dongle.inject(ute_teach_in_frame(0x05AABB01, 0xD2, 0x03, 0x0A))  # a button
     await hass.async_block_till_done()
     assert _discovery_flows(hass) == []
     # still recorded in the inbox with its declared profile
     hub = entry.runtime_data
-    assert hub.inbox.get("05AABB01").eep == "D2-05-00"
+    assert hub.inbox.get("05AABB01").eep == "D2-03-0A"
 
 
 async def test_ignored_device_stays_ignored(

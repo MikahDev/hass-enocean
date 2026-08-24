@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from .const import (
-    EEP_ACTUATOR,
     EEP_CHANNEL_COUNT,
     EEP_CONTACT,
+    EEP_COVER,
     EEP_ROCKERS,
     EURID_MAX,
     IMPORT_SCHEMA_VERSION,
@@ -76,6 +76,8 @@ class DeviceRecord:
             return "contact"
         if self.eep in EEP_ROCKERS:
             return "rocker"
+        if self.eep == EEP_COVER:
+            return "cover"
         return "actuator"
 
     @property
@@ -147,7 +149,7 @@ def validate_record(
     sender_id: str | None = None
     channel: int | None = None
 
-    if eep == EEP_ACTUATOR:
+    if eep in EEP_CHANNEL_COUNT:
         raw_sender = raw.get(KEY_SENDER_ID)
         if raw_sender is None:
             errors.append(f"{address}: sender_id is required for {eep}")

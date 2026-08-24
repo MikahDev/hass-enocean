@@ -7,6 +7,7 @@ funnels through async_stop(), which closes the transport deterministically.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +23,13 @@ from enocean_async import (
 from enocean_async.protocol.erp1.rorg import RORG
 from enocean_async.protocol.erp1.ute import UTEMessage
 from enocean_async.protocol.esp3.response import ResponseCode
+from enocean_async.semantics.instruction import Instruction
+from enocean_async.semantics.instructions.cover import (
+    CoverClose,
+    CoverOpen,
+    CoverSetPositionAndAngle,
+    CoverStop,
+)
 from enocean_async.semantics.instructions.switch import SetSwitchOutput
 from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY
 from homeassistant.core import HomeAssistant, callback
@@ -36,6 +44,7 @@ from .const import (
     CONF_DEVICE_PATH,
     CONF_DEVICES,
     DOMAIN,
+    EEP_CHANNEL_COUNT,
     EEP_CONTACT,
     EEP_ROCKERS,
     EURID_MAX,
@@ -43,8 +52,11 @@ from .const import (
     ISSUE_SERIAL_DISCONNECTED,
     KEY_ADDRESS,
     KEY_EEP,
+    PAIRING_TIMEOUT,
+    SENDER_OFFSET_MAX,
     SIGNAL_CONNECTION,
     SIGNAL_CONTACT,
+    SIGNAL_COVER_STATE,
     SIGNAL_SWITCH_STATE,
     SUPPORTED_EEPS,
 )
@@ -56,6 +68,14 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class PairingError(Exception):
+    """Guided pairing failed; reason is a translation key for the flow."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 def _rssi_dbm(raw: int | None) -> int | None:
@@ -81,6 +101,7 @@ class EnOceanHub:
         self.connected = False
         self.base_id: str | None = entry.data.get(CONF_BASE_ID)
         self._stopped = False
+        self._pairing: dict[str, asyncio.Future[None]] = {}
 
     async def async_start(self) -> None:
         """Open the serial port and register configured devices.
@@ -92,6 +113,7 @@ class EnOceanHub:
         gateway = Gateway(self.port)
         gateway.add_erp1_received_callback(self._on_erp1)
         gateway.add_observation_callback(self._on_observation)
+        gateway.add_device_taught_in_callback(self._on_taught_in)
         await gateway.start(auto_reconnect=True)
 
         self.gateway = gateway
@@ -100,10 +122,11 @@ class EnOceanHub:
         if base is not None:
             self.base_id = f"{int(base):08X}"
 
-        # Register actuators with the library so incoming D2-01 status
-        # telegrams are decoded. Contacts and rockers are decoded locally.
+        # Register transmitting devices (D2-01 switches, D2-05 covers) with the
+        # library so their status telegrams are decoded. Contacts and rockers
+        # are decoded locally.
         for record in self.devices.values():
-            if record.kind != "actuator":
+            if record.eep not in EEP_CHANNEL_COUNT:
                 continue
             try:
                 gateway.add_device(
@@ -139,7 +162,8 @@ class EnOceanHub:
             declared_eep = EEP_CONTACT
         elif erp1.rorg == RORG.RORG_UTE:
             # A UTE teach-in explicitly declares the device's EEP. Parsed for
-            # inbox display only; it is never acknowledged (no teach-in mode).
+            # inbox display; the library only acknowledges it inside a
+            # user-initiated pairing window focused on that one device.
             try:
                 ute = UTEMessage.from_erp1(erp1)
                 declared_eep = (
@@ -206,6 +230,25 @@ class EnOceanHub:
         if Observable.CONNECTION_STATUS in values:
             self._on_connection_status(values[Observable.CONNECTION_STATUS])
             return
+        if observation.entity == "cover" and (
+            Observable.POSITION in values or Observable.COVER_STATE in values
+        ):
+            # EnOcean D2-05 position: 0 = open, 100 = closed. HA covers use
+            # 100 = open, so invert here. 101-127 mean "unknown".
+            raw_pos = values.get(Observable.POSITION)
+            position = (
+                100 - int(raw_pos)
+                if isinstance(raw_pos, (int, float)) and 0 <= raw_pos <= 100
+                else None
+            )
+            address = f"{int(observation.device):08X}"
+            async_dispatcher_send(
+                self.hass,
+                SIGNAL_COVER_STATE.format(address),
+                position,
+                values.get(Observable.COVER_STATE),
+            )
+            return
         if Observable.SWITCH_STATE in values and observation.entity.endswith(
             "_switch_state"
         ):
@@ -250,10 +293,33 @@ class EnOceanHub:
         )
 
     # ------------------------------------------------------------------
-    # outgoing (bounded to configured D2-01 switch entities)
+    # outgoing (bounded to configured D2-01 switch and D2-05 cover entities)
     # ------------------------------------------------------------------
     async def async_set_output(self, record: DeviceRecord, turn_on: bool) -> bool:
-        """Send a D2-01 CMD 0x1 Actuator Set Output. Returns True if the
+        """Send a D2-01 CMD 0x1 Actuator Set Output."""
+        return await self._async_send(
+            record, SetSwitchOutput(output_value=100 if turn_on else 0)
+        )
+
+    async def async_open_cover(self, record: DeviceRecord) -> bool:
+        return await self._async_send(record, CoverOpen())
+
+    async def async_close_cover(self, record: DeviceRecord) -> bool:
+        return await self._async_send(record, CoverClose())
+
+    async def async_stop_cover(self, record: DeviceRecord) -> bool:
+        return await self._async_send(record, CoverStop())
+
+    async def async_set_cover_position(
+        self, record: DeviceRecord, ha_position: int
+    ) -> bool:
+        """Move to an HA position (100 = open); D2-05 uses 0 = open."""
+        return await self._async_send(
+            record, CoverSetPositionAndAngle(position=100 - ha_position, angle=None)
+        )
+
+    async def _async_send(self, record: DeviceRecord, command: Instruction) -> bool:
+        """Send one typed command to a configured device. Returns True if the
         transceiver acknowledged the transmission with RET_OK."""
         gateway = self.gateway
         if gateway is None or not self.connected:
@@ -267,13 +333,11 @@ class EnOceanHub:
                 translation_key="invalid_sender",
                 translation_placeholders={"sender_id": record.sender_id},
             )
+        command.entity_id = str(record.channel)
         try:
             result = await gateway.send_command(
                 EURID(int(record.address, 16)),
-                SetSwitchOutput(
-                    output_value=100 if turn_on else 0,
-                    entity_id=str(record.channel),
-                ),
+                command,
                 sender=sender,
             )
         except ValueError as err:
@@ -288,3 +352,59 @@ class EnOceanHub:
             ) from err
         response = result.response
         return response is not None and response.return_code == ResponseCode.OK
+
+    # ------------------------------------------------------------------
+    # guided pairing (one device, one time-bounded learning window)
+    # ------------------------------------------------------------------
+    def allocate_sender(self) -> str:
+        """Return the first free Base ID+offset sender (offset 1..127).
+
+        Offset 0 stays the proposed default for manual configuration, so
+        guided pairing always hands out a sender unique to the device.
+        """
+        if self.base_id is None:
+            raise PairingError("not_connected")
+        base = int(self.base_id, 16)
+        used = {
+            int(record.sender_id, 16) - base
+            for record in self.devices.values()
+            if record.sender_id is not None
+        }
+        offset = next(
+            (o for o in range(1, SENDER_OFFSET_MAX + 1) if o not in used), None
+        )
+        if offset is None:
+            raise PairingError("pair_no_free_sender")
+        return f"{base + offset:08X}"
+
+    async def async_pair(self, address: str) -> str:
+        """Answer the device's next UTE teach-in with a freshly allocated
+        sender ID. Blocks until the device is taught in, then returns the
+        sender. Raises PairingError on timeout or when no slot is free."""
+        gateway = self.gateway
+        if gateway is None or not self.connected:
+            raise PairingError("not_connected")
+        sender_id = self.allocate_sender()
+        future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self._pairing[address] = future
+        await gateway.start_learning(
+            timeout=PAIRING_TIMEOUT,
+            sender_id=BaseAddress(int(sender_id, 16)),
+            for_device=EURID(int(address, 16)),
+        )
+        try:
+            async with asyncio.timeout(PAIRING_TIMEOUT):
+                await future
+        except TimeoutError:
+            raise PairingError("pair_timeout") from None
+        finally:
+            self._pairing.pop(address, None)
+            if self.gateway is not None:
+                self.gateway.stop_learning()
+        return sender_id
+
+    @callback
+    def _on_taught_in(self, address: Any, eep: Any) -> None:
+        future = self._pairing.get(f"{int(address):08X}")
+        if future is not None and not future.done():
+            future.set_result(None)
