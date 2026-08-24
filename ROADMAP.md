@@ -5,7 +5,7 @@ ordered roughly by value; nothing here is committed to a date.
 
 ## Next up
 
-- [ ] **Auto-discovery**: promote radio-inbox hits to native Home Assistant
+- [x] **Auto-discovery** (v0.2.0): promote radio-inbox hits to native Home Assistant
   discovered-device cards (`async_step_discovery` / discovery flows), so a new
   sender shows up under Settings > Devices & Services without opening the
   options menu. Teach-in telegrams that declare an EEP (UTE, 1BS) can be

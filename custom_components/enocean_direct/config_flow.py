@@ -14,12 +14,34 @@ from homeassistant.config_entries import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
 )
 
-from .const import CONF_BASE_ID, CONF_DEVICE_PATH, DOMAIN
+from .const import (
+    CONF_BASE_ID,
+    CONF_DEVICE_PATH,
+    CONF_DEVICES,
+    DOMAIN,
+    EEP_ACTUATOR,
+    EEP_CHANNEL_COUNT,
+    KEY_ADDRESS,
+    KEY_CHANNEL,
+    KEY_EEP,
+    KEY_NAME,
+    KEY_SENDER_ID,
+)
+from .models import (
+    AddressError,
+    normalize_address,
+    sender_in_base_range,
+    validate_record,
+)
 from .options_flow import EnOceanOptionsFlow
 
 _LOGGER = logging.getLogger(__name__)
@@ -63,14 +85,127 @@ class EnOceanDirectConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        self._discovered: dict[str, Any] = {}
+
     @staticmethod
     def async_get_options_flow(config_entry: ConfigEntry) -> EnOceanOptionsFlow:
         return EnOceanOptionsFlow()
 
+    def _hub_entry(self) -> ConfigEntry | None:
+        entries = self._async_current_entries(include_ignore=False)
+        return entries[0] if entries else None
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        # One gateway only. Enforced here rather than via single_config_entry
+        # in the manifest, because that flag would also abort the per-device
+        # discovery flows below.
+        if self._async_current_entries():
+            return self.async_abort(reason="single_instance_allowed")
         return await self._async_step_device(user_input, reconfigure=False)
+
+    # ------------------------------------------------------------------
+    # per-device discovery (teach-in telegrams heard by the hub)
+    # ------------------------------------------------------------------
+    async def async_step_integration_discovery(
+        self, discovery_info: dict[str, Any]
+    ) -> ConfigFlowResult:
+        address = discovery_info[KEY_ADDRESS]
+        eep = discovery_info[KEY_EEP]
+        # Unique ID per device: dedupes concurrent cards and makes the
+        # native Ignore button stick across future teach-ins.
+        await self.async_set_unique_id(f"device-{address}")
+        self._abort_if_unique_id_configured()
+        hub = self._hub_entry()
+        if hub is None:
+            return self.async_abort(reason="no_gateway")
+        if any(
+            raw[KEY_ADDRESS] == address for raw in hub.options.get(CONF_DEVICES, [])
+        ):
+            return self.async_abort(reason="already_configured")
+        self._discovered = {KEY_ADDRESS: address, KEY_EEP: eep}
+        self.context["title_placeholders"] = {"name": f"{eep} {address}"}
+        return await self.async_step_discovered_device()
+
+    async def async_step_discovered_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._discovered[KEY_NAME] = (
+                user_input[KEY_NAME].strip() or self._discovered[KEY_ADDRESS]
+            )
+            if self._discovered[KEY_EEP] == EEP_ACTUATOR:
+                return await self.async_step_discovered_actuator()
+            return self._async_add_discovered_device()
+        return self.async_show_form(
+            step_id="discovered_device",
+            data_schema=vol.Schema(
+                {vol.Required(KEY_NAME, default=""): TextSelector()}
+            ),
+            description_placeholders={
+                "address": self._discovered[KEY_ADDRESS],
+                "eep": self._discovered[KEY_EEP],
+            },
+        )
+
+    async def async_step_discovered_actuator(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        hub = self._hub_entry()
+        base_id = hub.data.get(CONF_BASE_ID) if hub else None
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                sender_id = normalize_address(user_input[KEY_SENDER_ID])
+            except AddressError:
+                errors[KEY_SENDER_ID] = "invalid_sender"
+            else:
+                if base_id is not None and not sender_in_base_range(sender_id, base_id):
+                    errors[KEY_SENDER_ID] = "sender_out_of_range"
+            if not errors:
+                self._discovered[KEY_SENDER_ID] = sender_id
+                self._discovered[KEY_CHANNEL] = int(user_input[KEY_CHANNEL])
+                return self._async_add_discovered_device()
+
+        max_channel = EEP_CHANNEL_COUNT[EEP_ACTUATOR] - 1
+        schema = vol.Schema(
+            {
+                vol.Required(KEY_SENDER_ID, default=base_id or ""): TextSelector(),
+                vol.Required(KEY_CHANNEL, default=0): NumberSelector(
+                    NumberSelectorConfig(
+                        min=0, max=max_channel, step=1, mode=NumberSelectorMode.BOX
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="discovered_actuator",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "address": self._discovered[KEY_ADDRESS],
+                "base_id": base_id or "unknown",
+            },
+        )
+
+    def _async_add_discovered_device(self) -> ConfigFlowResult:
+        hub = self._hub_entry()
+        if hub is None:
+            return self.async_abort(reason="no_gateway")
+        existing = {raw[KEY_ADDRESS] for raw in hub.options.get(CONF_DEVICES, [])}
+        record, _errors = validate_record(
+            self._discovered, hub.data.get(CONF_BASE_ID), existing
+        )
+        if record is None:  # only duplicates can slip through the form checks
+            return self.async_abort(reason="already_configured")
+        devices = [*hub.options.get(CONF_DEVICES, []), record.as_dict()]
+        self.hass.config_entries.async_update_entry(
+            hub, options={**hub.options, CONF_DEVICES: devices}
+        )
+        self.hass.config_entries.async_schedule_reload(hub.entry_id)
+        return self.async_abort(reason="device_added")
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None

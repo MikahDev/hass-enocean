@@ -14,15 +14,36 @@
         "data": {
           "device": "Serial port"
         }
+      },
+      "discovered_device": {
+        "title": "Discovered EnOcean device",
+        "description": "Device {address} announced itself with profile {eep} (teach-in). Give it a name to add it. No teach-in response is sent.",
+        "data": {
+          "name": "Name"
+        }
+      },
+      "discovered_actuator": {
+        "title": "Actuator settings",
+        "description": "Device {address}. The sender ID is the controller identity the actuator knows; the transceiver Base ID ({base_id}) is proposed and must stay within Base ID +127. Radio channel 0 is Channel 1 on the device.",
+        "data": {
+          "sender_id": "Controller sender ID",
+          "channel": "Radio channel (0 = Channel 1)"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Cannot open the serial port or the transceiver did not answer. Check the path and make sure no other add-on or process owns the port."
+      "cannot_connect": "Cannot open the serial port or the transceiver did not answer. Check the path and make sure no other add-on or process owns the port.",
+      "invalid_sender": "Enter the sender ID as 8 hexadecimal digits.",
+      "sender_out_of_range": "The sender ID must be within the transceiver Base ID range (Base ID to Base ID +127)."
     },
     "abort": {
       "single_instance_allowed": "Only one EnOcean gateway is supported.",
-      "reconfigure_successful": "Gateway reconfigured."
-    }
+      "reconfigure_successful": "Gateway reconfigured.",
+      "device_added": "Device added to the EnOcean gateway.",
+      "no_gateway": "No EnOcean gateway is configured yet.",
+      "already_configured": "This device is already configured."
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {

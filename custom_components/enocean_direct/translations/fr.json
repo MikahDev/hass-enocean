@@ -14,15 +14,36 @@
         "data": {
           "device": "Port serie"
         }
+      },
+      "discovered_device": {
+        "title": "Appareil EnOcean detecte",
+        "description": "L'appareil {address} s'est annonce avec le profil {eep} (appairage). Donnez-lui un nom pour l'ajouter. Aucune reponse d'appairage n'est envoyee.",
+        "data": {
+          "name": "Nom"
+        }
+      },
+      "discovered_actuator": {
+        "title": "Reglages de l'actionneur",
+        "description": "Appareil {address}. Le sender ID est l'identite de controleur connue de l'actionneur ; le Base ID du transceiver ({base_id}) est propose et doit rester dans la plage Base ID +127. Le canal radio 0 correspond au Canal 1 de l'appareil.",
+        "data": {
+          "sender_id": "Sender ID du controleur",
+          "channel": "Canal radio (0 = Canal 1)"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Impossible d'ouvrir le port serie ou le transceiver n'a pas repondu. Verifiez le chemin et qu'aucun autre module ou processus n'occupe le port."
+      "cannot_connect": "Impossible d'ouvrir le port serie ou le transceiver n'a pas repondu. Verifiez le chemin et qu'aucun autre module ou processus n'occupe le port.",
+      "invalid_sender": "Saisissez le sender ID sous forme de 8 chiffres hexadecimaux.",
+      "sender_out_of_range": "Le sender ID doit rester dans la plage du Base ID du transceiver (Base ID a Base ID +127)."
     },
     "abort": {
       "single_instance_allowed": "Une seule passerelle EnOcean est prise en charge.",
-      "reconfigure_successful": "Passerelle reconfiguree."
-    }
+      "reconfigure_successful": "Passerelle reconfiguree.",
+      "device_added": "Appareil ajoute a la passerelle EnOcean.",
+      "no_gateway": "Aucune passerelle EnOcean n'est encore configuree.",
+      "already_configured": "Cet appareil est deja configure."
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {

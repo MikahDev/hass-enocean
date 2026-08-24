@@ -23,9 +23,11 @@ from enocean_async.protocol.erp1.rorg import RORG
 from enocean_async.protocol.erp1.ute import UTEMessage
 from enocean_async.protocol.esp3.response import ResponseCode
 from enocean_async.semantics.instructions.switch import SetSwitchOutput
+from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import discovery_flow
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
@@ -36,11 +38,15 @@ from .const import (
     DOMAIN,
     EEP_CONTACT,
     EEP_ROCKERS,
+    EURID_MAX,
     EVENT_BUTTON,
     ISSUE_SERIAL_DISCONNECTED,
+    KEY_ADDRESS,
+    KEY_EEP,
     SIGNAL_CONNECTION,
     SIGNAL_CONTACT,
     SIGNAL_SWITCH_STATE,
+    SUPPORTED_EEPS,
 )
 from .inbox import RadioInbox
 from .models import DeviceRecord, record_from_dict
@@ -151,6 +157,17 @@ class EnOceanHub:
             declared_eep=declared_eep,
         )
         if record is None:
+            # A teach-in is a deliberate user action: surface a native
+            # discovery card. Data telegrams stay in the inbox so foreign
+            # devices don't spam discovery. Base-range senders are other
+            # controllers, not devices.
+            if declared_eep in SUPPORTED_EEPS and int(address, 16) <= EURID_MAX:
+                discovery_flow.async_create_flow(
+                    self.hass,
+                    DOMAIN,
+                    context={"source": SOURCE_INTEGRATION_DISCOVERY},
+                    data={KEY_ADDRESS: address, KEY_EEP: declared_eep},
+                )
             return
 
         if record.eep == EEP_CONTACT and erp1.rorg == RORG.RORG_1BS:
