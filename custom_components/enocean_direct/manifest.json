@@ -1,14 +1,20 @@
 {
   "domain": "enocean_direct",
   "name": "EnOcean Direct",
-  "codeowners": [],
+  "codeowners": [
+    "@MikahDev"
+  ],
   "config_flow": true,
-  "documentation": "https://github.com/mikah/hass-enocean",
+  "documentation": "https://github.com/MikahDev/hass-enocean",
   "integration_type": "hub",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/mikah/hass-enocean/issues",
-  "loggers": ["enocean_async"],
-  "requirements": ["enocean-async==0.16.0"],
+  "issue_tracker": "https://github.com/MikahDev/hass-enocean/issues",
+  "loggers": [
+    "enocean_async"
+  ],
+  "requirements": [
+    "enocean-async==0.16.0"
+  ],
   "single_config_entry": true,
   "version": "0.1.0"
 }
