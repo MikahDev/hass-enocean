@@ -73,6 +73,7 @@
           "inbox": "Boite de reception radio",
           "pair_device": "Appairer un nouvel appareil",
           "add_manual": "Ajouter un appareil manuellement",
+          "module_params": "Configurer les parametres d'actionneur",
           "manage": "Gerer les appareils configures",
           "import_devices": "Importer un inventaire",
           "export_devices": "Exporter une sauvegarde"
@@ -114,6 +115,24 @@
           "area_id": "Piece (optionnel)"
         }
       },
+      "module_params": {
+        "title": "Parametres d'actionneur",
+        "description": "Choisissez l'actionneur D2-01 a configurer.",
+        "data": {
+          "address": "Appareil"
+        }
+      },
+      "module_params_form": {
+        "title": "Parametres d'actionneur",
+        "description": "{name} ({address}). Une seule commande radio ecrit TOUTES ces valeurs dans le module en une fois ; impossible d'en changer une seule. Verifiez les valeurs d'usine dans le manuel du module avant de valider.",
+        "data": {
+          "local_control": "Bouton local active",
+          "taught_in_enabled": "Appareils appaires actives (les interrupteurs continuent de fonctionner)",
+          "overcurrent_restart": "Redemarrage automatique apres coupure sur surintensite",
+          "power_failure_detection": "Detection de coupure de courant",
+          "default_state": "Etat apres une coupure de courant"
+        }
+      },
       "manage": {
         "title": "Appareils configures",
         "data": {
@@ -146,7 +165,8 @@
       "invalid_sender": "Saisissez le sender ID sous forme de 8 chiffres hexadecimaux.",
       "sender_out_of_range": "Le sender ID doit rester dans la plage du Base ID du transceiver (Base ID a Base ID +127).",
       "import_invalid": "Le document a ete rejete ; rien n'a ete enregistre. Voir les details ci-dessus.",
-      "not_eurid": "Ceci est une adresse d'emetteur/base, pas une adresse d'appareil (les EURID d'appareil se terminent a FF7FFFFF)."
+      "not_eurid": "Ceci est une adresse d'emetteur/base, pas une adresse d'appareil (les EURID d'appareil se terminent a FF7FFFFF).",
+      "not_acknowledged": "Le transceiver n'a pas acquitte la transmission. Rien n'a peut-etre ete ecrit ; verifiez le module et reessayez."
     },
     "abort": {
       "inbox_empty": "Aucun emetteur non configure n'a encore ete entendu.",
@@ -157,10 +177,21 @@
       "pair_timeout": "Aucun teach-in n'a ete recu a temps. Relancez l'appairage et appuyez sur le bouton teach-in pendant la fenetre.",
       "pair_no_free_sender": "Les 127 sender ID de la plage Base ID du transceiver sont tous utilises ; l'appairage ne peut pas en attribuer.",
       "pair_unsupported_eep": "L'appareil a annonce un profil non pris en charge par cette integration. Consultez la boite de reception radio pour voir l'EEP declare.",
-      "pair_receive_only": "Cet appareil est en reception seule et n'a pas besoin d'appairage. Ajoutez-le depuis sa carte de decouverte ou la boite de reception radio."
+      "pair_receive_only": "Cet appareil est en reception seule et n'a pas besoin d'appairage. Ajoutez-le depuis sa carte de decouverte ou la boite de reception radio.",
+      "no_actuators": "Aucun actionneur D2-01 n'est configure.",
+      "params_sent": "Parametres transmis et acquittes par le transceiver. Verifiez que le module se comporte comme configure (bouton local, etat apres coupure)."
     },
     "progress": {
       "pair_waiting_any": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil. La passerelle repondra au premier teach-in entendu avec un sender ID nouvellement attribue."
+    }
+  },
+  "selector": {
+    "default_state": {
+      "options": {
+        "off": "Eteint (0%)",
+        "on": "Allume (100%)",
+        "previous": "Memoriser l'etat precedent"
+      }
     }
   },
   "entity": {

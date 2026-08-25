@@ -21,6 +21,8 @@ from enocean_async import (
     device_type_for_eep,
 )
 from enocean_async.eep import EEP_SPECIFICATIONS
+from enocean_async.eep.handler import EEPHandler
+from enocean_async.eep.message import EEPMessageType, RawEEPMessage
 from enocean_async.protocol.erp1.fourbs import FourBSTeachInTelegram
 from enocean_async.protocol.erp1.rorg import RORG
 from enocean_async.protocol.erp1.ute import UTEMessage
@@ -452,6 +454,56 @@ class EnOceanHub:
                     "error": str(err),
                 },
             ) from err
+        response = result.response
+        return response is not None and response.return_code == ResponseCode.OK
+
+    async def async_set_local(
+        self,
+        record: DeviceRecord,
+        *,
+        taught_in_enabled: bool,
+        overcurrent_restart: bool,
+        local_control: bool,
+        power_failure_detection: bool,
+        default_state: int,
+    ) -> bool:
+        """Send a D2-01 CMD 0x2 Actuator Set Local. The telegram writes every
+        local parameter at once, so all consequential fields are explicit
+        arguments; the dim timers and day/night flag have no effect on the
+        supported relay type and are sent as their 'not used' values. Encoded
+        through the library's own EEP specification. Returns True on RET_OK."""
+        gateway = self.gateway
+        if gateway is None or not self.connected:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="not_connected"
+            )
+        sender = BaseAddress(int(record.sender_id, 16))
+        if not gateway.is_valid_sender(sender):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_sender",
+                translation_placeholders={"sender_id": record.sender_id},
+            )
+        message = RawEEPMessage(
+            sender=sender,
+            destination=EURID(int(record.address, 16)),
+            message_type=EEPMessageType(id=2, description="Actuator set local"),
+            raw={
+                "d/e": 1 if taught_in_enabled else 0,
+                "OC": 1 if overcurrent_restart else 0,
+                "RO": 0,  # over-current trigger signal: not exposed
+                "LC": 1 if local_control else 0,
+                "I/O": record.channel,
+                "DT2": 0,
+                "DT3": 0,
+                "d/n": 0,
+                "PF": 1 if power_failure_detection else 0,
+                "DS": default_state,
+                "DT1": 0,
+            },
+        )
+        erp1 = EEPHandler(EEP_SPECIFICATIONS[EEP(record.eep)]).encode(message)
+        result = await gateway.send_esp3_packet(erp1.to_esp3())
         response = result.response
         return response is not None and response.return_code == ResponseCode.OK
 

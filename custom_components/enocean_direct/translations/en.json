@@ -73,6 +73,7 @@
           "inbox": "Radio inbox",
           "pair_device": "Pair a new device",
           "add_manual": "Add a device manually",
+          "module_params": "Configure actuator parameters",
           "manage": "Manage configured devices",
           "import_devices": "Import an inventory",
           "export_devices": "Export a backup"
@@ -114,6 +115,24 @@
           "area_id": "Room (optional)"
         }
       },
+      "module_params": {
+        "title": "Actuator parameters",
+        "description": "Pick the D2-01 actuator to configure.",
+        "data": {
+          "address": "Device"
+        }
+      },
+      "module_params_form": {
+        "title": "Actuator parameters",
+        "description": "{name} ({address}). One radio command writes ALL of these values to the module at once; there is no way to change just one. Check your module's manual for its factory values before submitting.",
+        "data": {
+          "local_control": "Local button enabled",
+          "taught_in_enabled": "Taught-in devices enabled (rockers keep working)",
+          "overcurrent_restart": "Automatic restart after over-current shut-off",
+          "power_failure_detection": "Power failure detection",
+          "default_state": "State after a power failure"
+        }
+      },
       "manage": {
         "title": "Configured devices",
         "data": {
@@ -146,7 +165,8 @@
       "invalid_sender": "Enter the sender ID as 8 hexadecimal digits.",
       "sender_out_of_range": "The sender ID must be within the transceiver Base ID range (Base ID to Base ID +127).",
       "import_invalid": "The document was rejected; nothing was saved. See the details above.",
-      "not_eurid": "This is a sender/base address, not a device address (device EURIDs end at FF7FFFFF)."
+      "not_eurid": "This is a sender/base address, not a device address (device EURIDs end at FF7FFFFF).",
+      "not_acknowledged": "The transceiver did not acknowledge the transmission. Nothing may have been written; check the module and try again."
     },
     "abort": {
       "inbox_empty": "No unconfigured senders have been heard yet.",
@@ -157,10 +177,21 @@
       "pair_timeout": "No teach-in was received in time. Start pairing again and press the teach-in button within the window.",
       "pair_no_free_sender": "All 127 sender IDs of the transceiver Base ID range are in use; pairing cannot allocate one.",
       "pair_unsupported_eep": "The device announced a profile this integration does not support. See the radio inbox for the declared EEP.",
-      "pair_receive_only": "This device is receive-only and needs no pairing. Add it from its discovery card or the radio inbox."
+      "pair_receive_only": "This device is receive-only and needs no pairing. Add it from its discovery card or the radio inbox.",
+      "no_actuators": "No D2-01 actuator is configured.",
+      "params_sent": "Parameters transmitted and acknowledged by the transceiver. Verify the module behaves as configured (local button, power-failure state)."
     },
     "progress": {
       "pair_waiting_any": "Press the teach-in (LRN) button on the device now. The gateway will answer the first teach-in it hears with a freshly allocated sender ID."
+    }
+  },
+  "selector": {
+    "default_state": {
+      "options": {
+        "off": "Off (0%)",
+        "on": "On (100%)",
+        "previous": "Remember previous state"
+      }
     }
   },
   "entity": {

@@ -28,12 +28,15 @@ ordered roughly by value; nothing here is committed to a date.
   allocated or historical sender visible for debugging without opening the
   entity attributes. Feeds into the repeater insight exploration below
   (same telegram metadata).
-- [ ] **Module parameters (Jeedom parity)**: per-actuator settings step
-  sending D2-01 CMD 0x2 Actuator Set Local (local button enable/disable,
-  switch vs toggle mode, power-failure default state), verified against the
-  CMD 0x4/0xD status responses. Transmits configuration to physical
-  equipment: first live use goes through the same supervised gate as the
-  relay test in docs/live-validation.md.
+- [x] **Module parameters (Jeedom parity)** (v0.10.0): per-actuator settings
+  step sending D2-01 CMD 0x2 Actuator Set Local (local button enable/disable,
+  taught-in devices, over-current restart, power-failure detection and
+  default state), encoded through the library's EEP spec; the form shows
+  every field because the telegram writes them all at once. Not included:
+  switch-vs-toggle external interface mode (that is CMD 0xB, a separate
+  telegram; add when needed). Transmits configuration to physical equipment:
+  first live use goes through the supervised gate (Phase F) in
+  docs/live-validation.md.
 - [x] **EEP expansion, wave 1 — D2-05-00 cover** (v0.4.0, owned hardware): native
   `cover` entity via the library's D2-05 handler (position, stop, status
   feedback), same explicit sender-ID rules as D2-01. Transmits: first live

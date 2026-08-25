@@ -106,6 +106,24 @@ E3. Set position 50%.
 E4. Move the blind from its local control (if fitted); HA must follow without
     sending any command.
 
+## Phase F - v0.10.0: module parameters (D2-01 CMD 0x2) [TX]
+
+Requires separate explicit approval and someone physically at the relay.
+CMD 0x2 writes ALL local parameters in one telegram; note the module's
+factory values from its manual before starting.
+
+F1. Configure > Configure actuator parameters > pilot relay. Submit the form
+    with the module's known factory values, changing ONLY "Local button
+    enabled" to off.
+    Pass: transceiver acknowledges; the relay's physical button no longer
+    toggles the load; HA control still works.
+F2. Re-submit with "Local button enabled" on.
+    Pass: the physical button works again. Fail on either step: re-submit
+    factory values, verify, and file a bug.
+F3. Optional (only if the installation wants it): set "State after a power
+    failure" and power-cycle the module's supply once to verify the chosen
+    state; then confirm the taught-in rocker still controls the relay.
+
 ## Phase D - close-out
 
 D1. If all checks pass: uninstall or leave the MQTT add-on disabled (do not

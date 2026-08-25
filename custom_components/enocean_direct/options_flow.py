@@ -23,6 +23,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
+    EEP_ACTUATOR,
     EEP_CHANNEL_COUNT,
     EURID_MAX,
     KEY_ADDRESS,
@@ -57,6 +58,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         self._remove_address: str | None = None
         self._pair_task: asyncio.Task | None = None
         self._pair_error: str | None = None
+        self._params_address: str | None = None
 
     # ------------------------------------------------------------------
     # helpers
@@ -88,10 +90,92 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                 "inbox",
                 "pair_device",
                 "add_manual",
+                "module_params",
                 "manage",
                 "import_devices",
                 "export_devices",
             ],
+        )
+
+    # ------------------------------------------------------------------
+    # module parameters: D2-01 CMD 0x2 Actuator Set Local
+    # ------------------------------------------------------------------
+    async def async_step_module_params(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        actuators = [raw for raw in self._raw_devices if raw[KEY_EEP] == EEP_ACTUATOR]
+        if not actuators:
+            return self.async_abort(reason="no_actuators")
+        if user_input is not None:
+            self._params_address = user_input[KEY_ADDRESS]
+            return await self.async_step_module_params_form()
+        options = [
+            SelectOptionDict(
+                value=raw[KEY_ADDRESS],
+                label=f"{raw[KEY_NAME]} | {raw[KEY_ADDRESS]} | {raw[KEY_EEP]}",
+            )
+            for raw in actuators
+        ]
+        return self.async_show_form(
+            step_id="module_params",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(KEY_ADDRESS): SelectSelector(
+                        SelectSelectorConfig(
+                            options=options, mode=SelectSelectorMode.LIST
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_module_params_form(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """One CMD 0x2 telegram sets every local parameter at once, so every
+        consequential field is shown; nothing is written silently."""
+        hub = getattr(self.config_entry, "runtime_data", None)
+        record = hub.devices.get(self._params_address) if hub else None
+        if hub is None or hub.gateway is None or record is None:
+            return self.async_abort(reason="not_loaded")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            acknowledged = await hub.async_set_local(
+                record,
+                taught_in_enabled=user_input["taught_in_enabled"],
+                overcurrent_restart=user_input["overcurrent_restart"],
+                local_control=user_input["local_control"],
+                power_failure_detection=user_input["power_failure_detection"],
+                default_state={"off": 0, "on": 1, "previous": 2}[
+                    user_input["default_state"]
+                ],
+            )
+            if acknowledged:
+                return self.async_abort(reason="params_sent")
+            errors["base"] = "not_acknowledged"
+        schema = vol.Schema(
+            {
+                vol.Required("local_control", default=True): bool,
+                vol.Required("taught_in_enabled", default=True): bool,
+                vol.Required("overcurrent_restart", default=False): bool,
+                vol.Required("power_failure_detection", default=False): bool,
+                vol.Required("default_state", default="previous"): SelectSelector(
+                    SelectSelectorConfig(
+                        options=["off", "on", "previous"],
+                        mode=SelectSelectorMode.DROPDOWN,
+                        translation_key="default_state",
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="module_params_form",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "name": record.name,
+                "address": record.address,
+            },
         )
 
     # ------------------------------------------------------------------

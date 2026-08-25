@@ -13,7 +13,9 @@ Talks to an EnOcean USB transceiver directly via the enocean-async library. No M
 
 - Never open a real serial device from tests. All tests use the FakeDongle in tests/conftest.py.
 - Never add an open learning mode or an arbitrary-packet send service. Transmission
-  is limited to D2-01 switch and D2-05 cover commands from configured entities, plus
+  is limited to D2-01 switch and D2-05 cover commands from configured entities,
+  D2-01 CMD 0x2 Actuator Set Local from the module-parameters options step
+  (spec-encoded, every field explicit in the form), plus
   teach-in responses the library sends inside a guided-pairing window
   (user-initiated from a discovery card or the Configure menu, time-bounded by
   PAIRING_TIMEOUT; the discovery-card window is focused on that one device, the

@@ -35,8 +35,9 @@ Repairs issues and FR/EN translations.
 ## Design rules
 
 - **Passive by default.** The integration only transmits for configured
-  D2-01 switch and D2-05 cover entities, plus the teach-in response during
-  guided pairing (see below). There is no open learning mode and no
+  D2-01 switch and D2-05 cover entities, the module-parameters step (D2-01
+  CMD 0x2, every field shown before sending), and the teach-in response
+  during guided pairing (see below). There is no open learning mode and no
   arbitrary-packet API.
 - **Sender IDs are explicit or paired.** For a device migrated from another
   controller you enter the sender ID it already knows (the transceiver Base ID
