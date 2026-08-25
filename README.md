@@ -20,7 +20,7 @@ Repairs issues and FR/EN translations.
 | EEP | Device | Home Assistant |
 |-----|--------|----------------|
 | D5-00-01 | Single-input contact | `binary_sensor` (opening; on = open) |
-| F6-02-01 / F6-02-02 | 2-rocker wall switch | Device triggers (press per button, release) |
+| F6-02-01 / F6-02-02 | 2-rocker wall switch | Device triggers: press, held (after 0.5 s), released after hold, double press (within 0.5 s) per button, plus a generic release |
 | D2-01-00..0F (16 types) | 1-channel relays (e.g. NodOn micromodules) | `switch` with confirmed/assumed state; metering types add energy/power sensors + a "Read meter" button |
 | D2-05-00 | Blinds/shutter actuator | `cover` with position, stop and status feedback |
 | D2-20-02 | Fan control unit | `fan` (percentage, Auto preset) with status feedback |

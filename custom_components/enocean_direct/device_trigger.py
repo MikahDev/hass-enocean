@@ -1,4 +1,9 @@
-"""Device triggers for F6-02-01 / F6-02-02 rocker switches."""
+"""Device triggers for F6-02-01 / F6-02-02 rocker switches.
+
+pressed/released come straight from the telegrams. held, released_after_hold
+and double_pressed are synthesised by the hub from press/release timing
+(ROCKER_HOLD_SECONDS / ROCKER_DOUBLE_PRESS_SECONDS in const.py).
+"""
 
 from __future__ import annotations
 
@@ -20,7 +25,10 @@ from .const import DOMAIN, EEP_ROCKERS, EVENT_BUTTON
 
 CONF_SUBTYPE = "subtype"
 
-TRIGGER_TYPES = ("pressed", "released")
+# Per-button trigger types; "released" stays generic (the release telegram
+# names no button) and unchanged for existing automations.
+BUTTON_TRIGGER_TYPES = ("pressed", "held", "released_after_hold", "double_pressed")
+TRIGGER_TYPES = (*BUTTON_TRIGGER_TYPES, "released")
 BUTTON_SUBTYPES = ("ai", "ao", "bi", "bo")
 
 TRIGGER_SCHEMA = DEVICE_TRIGGER_BASE_SCHEMA.extend(
@@ -44,12 +52,14 @@ def _rocker_address(hass: HomeAssistant, device_id: str) -> str | None:
 async def async_get_triggers(
     hass: HomeAssistant, device_id: str
 ) -> list[dict[str, str]]:
-    """List triggers: a press per button plus a generic release."""
+    """List triggers: press, hold, release-after-hold and double press per
+    button, plus a generic release."""
     if _rocker_address(hass, device_id) is None:
         return []
     base = {CONF_PLATFORM: "device", CONF_DOMAIN: DOMAIN, CONF_DEVICE_ID: device_id}
     triggers = [
-        {**base, CONF_TYPE: "pressed", CONF_SUBTYPE: subtype}
+        {**base, CONF_TYPE: trigger_type, CONF_SUBTYPE: subtype}
+        for trigger_type in BUTTON_TRIGGER_TYPES
         for subtype in BUTTON_SUBTYPES
     ]
     triggers.append({**base, CONF_TYPE: "released"})

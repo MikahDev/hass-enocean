@@ -77,10 +77,12 @@ ordered roughly by value; nothing here is committed to a date.
   per-device granularity can come with edit-in-place). Off by default; a
   documented, deliberate automatic transmission. Switches additionally
   restore their last state as "assumed" across restarts.
-- [ ] **Rocker gestures**: synthesise long-press, release-after-hold and
-  double-press device triggers from the F6 press/release timing the
-  integration already receives (no new TX). No HA-native solution exists
-  for this today; ship a hold-to-dim/toggle blueprint alongside.
+- [x] **Rocker gestures** (v0.14.0): held (fired while the button is still
+  down, 0.5 s), released-after-hold and double-press (second press within
+  0.5 s of the previous short press's release) device triggers synthesised
+  from the F6 press/release timing the integration already receives (no new
+  TX). Fixed timing windows. Not shipped: the hold-to-dim blueprint; the
+  held / released_after_hold pair is enough to write one per light.
 - [ ] **Per-device command inversion**: an invert option for actuators wired
   backwards - cover direction/position first (open and close swapped),
   optionally switch on/off. Stored on the DeviceRecord, editable via

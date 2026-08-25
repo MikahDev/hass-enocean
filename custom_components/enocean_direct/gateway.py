@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from enocean_async import (
@@ -67,6 +69,8 @@ from .const import (
     KEY_ADDRESS,
     KEY_EEP,
     PAIRING_TIMEOUT,
+    ROCKER_DOUBLE_PRESS_SECONDS,
+    ROCKER_HOLD_SECONDS,
     SENDER_OFFSET_MAX,
     SIGNAL_BATTERY,
     SIGNAL_CONNECTION,
@@ -100,6 +104,28 @@ class PairingError(Exception):
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
+
+
+@dataclass
+class _RockerGesture:
+    """Per-rocker press tracking for the synthesised held / released-after-hold
+    / double-pressed events. The F6 release telegram carries no button, so the
+    button of the press currently down is remembered here."""
+
+    down: bool = False
+    button: str | None = None
+    hold_timer: asyncio.TimerHandle | None = None
+    held: bool = False
+    # True while the press that completed a double press is down, so its
+    # release does not seed yet another double (three taps = one double).
+    in_double: bool = False
+    # (button, release time) of the last short press, for double-press detection
+    last_short_release: tuple[str | None, datetime] | None = None
+
+    def cancel_hold(self) -> None:
+        if self.hold_timer is not None:
+            self.hold_timer.cancel()
+            self.hold_timer = None
 
 
 def sensor_entities_for_eep(eep: str) -> list[tuple[str, str, bool]]:
@@ -156,6 +182,7 @@ class EnOceanHub:
         # Pairing waiters keyed by address; "*" is an unfocused menu-pairing
         # window that accepts the first device heard.
         self._pairing: dict[str, asyncio.Future[tuple[str, str]]] = {}
+        self._gestures: dict[str, _RockerGesture] = {}
 
     async def async_start(self) -> None:
         """Open the serial port and register configured devices.
@@ -200,6 +227,8 @@ class EnOceanHub:
     async def async_stop(self) -> None:
         """Close the serial connection. Safe to call more than once."""
         self._stopped = True
+        for gesture in self._gestures.values():
+            gesture.cancel_hold()
         if self.gateway is not None:
             await self.gateway.stop()
             self.gateway = None
@@ -326,9 +355,18 @@ class EnOceanHub:
         elif record.eep in EEP_ROCKERS and erp1.rorg == RORG.RORG_RPS:
             action = decode_f6(bytes(erp1.telegram_data), erp1.status)
             if action is not None:
-                self._fire_button_event(record, action)
+                self._fire_button_event(
+                    record, action.action, action.button, action.second_button
+                )
+                self._track_gesture(record, action.action, action.button)
 
-    def _fire_button_event(self, record: DeviceRecord, action) -> None:
+    def _fire_button_event(
+        self,
+        record: DeviceRecord,
+        event_type: str,
+        button: str | None,
+        second_button: str | None = None,
+    ) -> None:
         registry = dr.async_get(self.hass)
         device = registry.async_get_device(identifiers={(DOMAIN, record.address)})
         self.hass.bus.async_fire(
@@ -336,11 +374,59 @@ class EnOceanHub:
             {
                 "device_id": device.id if device else None,
                 "address": record.address,
-                "type": action.action,
-                "button": action.button,
-                "second_button": action.second_button,
+                "type": event_type,
+                "button": button,
+                "second_button": second_button,
             },
         )
+
+    def _track_gesture(
+        self, record: DeviceRecord, event_type: str, button: str | None
+    ) -> None:
+        """Synthesise held / released_after_hold / double_pressed from the
+        press and release telegrams the rocker sends anyway. The plain
+        pressed/released events above are untouched."""
+        gesture = self._gestures.setdefault(record.address, _RockerGesture())
+        now = dt_util.utcnow()
+        if event_type == "pressed":
+            # A press while another is still down means its release was never
+            # heard: drop the stale hold timer and start over.
+            gesture.cancel_hold()
+            last = gesture.last_short_release
+            gesture.last_short_release = None
+            gesture.in_double = (
+                last is not None
+                and last[0] == button
+                and (now - last[1]).total_seconds() <= ROCKER_DOUBLE_PRESS_SECONDS
+            )
+            if gesture.in_double:
+                self._fire_button_event(record, "double_pressed", button)
+            gesture.down = True
+            gesture.button = button
+            gesture.held = False
+            gesture.hold_timer = self.hass.loop.call_later(
+                ROCKER_HOLD_SECONDS, self._on_hold, record
+            )
+            return
+        # released: the telegram is generic, the tracked press tells which button
+        gesture.cancel_hold()
+        if gesture.down:
+            if gesture.held:
+                self._fire_button_event(record, "released_after_hold", gesture.button)
+            elif not gesture.in_double:
+                gesture.last_short_release = (gesture.button, now)
+        gesture.down = False
+        gesture.held = False
+        gesture.in_double = False
+
+    @callback
+    def _on_hold(self, record: DeviceRecord) -> None:
+        gesture = self._gestures.get(record.address)
+        if self._stopped or gesture is None or not gesture.down:
+            return
+        gesture.hold_timer = None
+        gesture.held = True
+        self._fire_button_event(record, "held", gesture.button)
 
     @callback
     def _on_observation(self, observation: Observation) -> None:

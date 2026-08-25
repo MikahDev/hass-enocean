@@ -297,7 +297,10 @@
   "device_automation": {
     "trigger_type": {
       "pressed": "\"{subtype}\" pressed",
-      "released": "Button released"
+      "released": "Button released",
+      "held": "\"{subtype}\" held",
+      "released_after_hold": "\"{subtype}\" released after hold",
+      "double_pressed": "\"{subtype}\" double pressed"
     },
     "trigger_subtype": {
       "ai": "AI (rocker A, bottom)",

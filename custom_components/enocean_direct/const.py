@@ -87,6 +87,14 @@ SENDER_OFFSET_MAX = 127
 # Guided pairing: how long the focused learning window stays open (seconds).
 PAIRING_TIMEOUT = 60
 
+# Rocker gestures, synthesised from F6 press/release timing (seconds). Fixed
+# and documented, not user-tunable. "held" fires while the button is still
+# down so hold-to-dim automations can start on it; a second press of the same
+# button within the double-press window of the previous short press's release
+# fires "double_pressed" on the second press.
+ROCKER_HOLD_SECONDS = 0.5
+ROCKER_DOUBLE_PRESS_SECONDS = 0.5
+
 INBOX_MAX_ENTRIES = 128
 
 IMPORT_SCHEMA_VERSION = 1

@@ -34,13 +34,12 @@ async def test_get_triggers(hass: HomeAssistant, dongle: FakeDongle) -> None:
     assert await setup_entry(hass, entry)
     triggers = await async_get_triggers(hass, _rocker_device_id(hass))
     types = {(t["type"], t.get("subtype")) for t in triggers}
+    per_button = ("pressed", "held", "released_after_hold", "double_pressed")
     assert types == {
-        ("pressed", "ai"),
-        ("pressed", "ao"),
-        ("pressed", "bi"),
-        ("pressed", "bo"),
-        ("released", None),
-    }
+        (trigger_type, subtype)
+        for trigger_type in per_button
+        for subtype in ("ai", "ao", "bi", "bo")
+    } | {("released", None)}
 
     # a contact device offers no rocker triggers
     contact_device = dr.async_get(hass).async_get_device(
@@ -63,9 +62,18 @@ async def test_press_and_release_events(
 
     assert [e["type"] for e in events] == ["pressed", "released"]
     assert events[0]["button"] == "ao"
+    assert events[0]["second_button"] is None
     assert events[0]["address"] == ROCKER["address"]
     assert events[0]["device_id"] == _rocker_device_id(hass)
     assert events[1]["button"] is None
+    assert events[1]["second_button"] is None
+
+    # two buttons at once: R1 = AO, SA set, R2 = BO
+    dongle.inject(f6_frame(ROCKER_INT, 0x37))
+    await hass.async_block_till_done()
+    assert events[2]["type"] == "pressed"
+    assert events[2]["button"] == "ao"
+    assert events[2]["second_button"] == "bo"
 
 
 async def test_trigger_fires_automation(

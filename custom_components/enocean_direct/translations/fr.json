@@ -297,7 +297,10 @@
   "device_automation": {
     "trigger_type": {
       "pressed": "\"{subtype}\" appuye",
-      "released": "Bouton relache"
+      "released": "Bouton relache",
+      "held": "\"{subtype}\" maintenu",
+      "released_after_hold": "\"{subtype}\" relache apres maintien",
+      "double_pressed": "\"{subtype}\" double appui"
     },
     "trigger_subtype": {
       "ai": "AI (bascule A, bas)",
