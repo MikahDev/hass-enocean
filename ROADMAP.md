@@ -77,6 +77,15 @@ ordered roughly by value; nothing here is committed to a date.
   per-device granularity can come with edit-in-place). Off by default; a
   documented, deliberate automatic transmission. Switches additionally
   restore their last state as "assumed" across restarts.
+- [ ] **Rocker gestures**: synthesise long-press, release-after-hold and
+  double-press device triggers from the F6 press/release timing the
+  integration already receives (no new TX). No HA-native solution exists
+  for this today; ship a hold-to-dim/toggle blueprint alongside.
+- [ ] **Per-device command inversion**: an invert option for actuators wired
+  backwards - cover direction/position first (open and close swapped),
+  optionally switch on/off. Stored on the DeviceRecord, editable via
+  edit-in-place below. Deliberately NOT offered for the D5-00-01 contact:
+  that polarity is spec-verified and stays fixed.
 - [ ] **Human-readable EEP names**: the add-manually dropdown now lists ~90
   raw EEP codes with no hint what they are. Label every EEP selector,
   discovery card title and manage/inbox list with the library's profile
@@ -88,6 +97,46 @@ ordered roughly by value; nothing here is committed to a date.
   carry a manufacturer ID the library resolves; store it at discovery/
   pairing time and set it as the HA device manufacturer instead of the
   generic "EnOcean".
+
+## From the ecosystem research (Jeedom / openHAB / FHEM / ioBroker, 25/08/2026)
+
+- [ ] **Eltako / legacy actuator control (major)**: virtual rocker emulation
+  (F6 press/release pairs from an allocated sender, configurable press
+  duration) and A5-38-08 central command (switching + dimming with ramp
+  time, Eltako variant) to control the huge installed base of receivers
+  that never speak D2-01 (Eltako FSR/FUD/FSB, Trio2Sys...). Introduces a
+  `light` platform and time-based cover positioning (travel-time
+  dead-reckoning) for FSB shutters. Every major platform has this (Jeedom
+  recepteur_*, openHAB classicDevice/centralCommand, FHEM gateway profile).
+  Expands the transmission model to F6/A5-38 emulation: needs its own
+  design pass and constraint update before implementation.
+- [ ] **Dongle repeater mode**: CO_WR_REPEATER (off / level 1 / level 2) as
+  a Gateway setting; the USB300 setting is volatile so it must be re-applied
+  at every startup - exactly what the settings step is for.
+- [ ] **Base ID disaster recovery**: guided flow to write the exported base
+  ID onto a replacement stick (library `change_base_id` exists, hardware
+  allows 10 writes ever - show `base_id_remaining_write_cycles` first).
+  Completes the export/backup story: today a dead stick orphans every
+  paired actuator.
+- [ ] **Radio filters / RX sensitivity**: CO_WR_FILTER_* to drop weak or
+  foreign telegrams in the chip (dense-apartment inbox clutter).
+- [ ] **Hop-count diagnostics**: expose `repeater_count` (heard direct vs
+  repeated) per device; feeds the repeater-insight exploration.
+- [ ] **Command observation (opt-in)**: re-send an unconfirmed D2-01 command
+  once after N seconds (FHEM `observe` pattern) using the existing CMD 0x4
+  confirmation tracking.
+- [ ] **UTE teach-out / unpair**: a remove option that opens a focused
+  window with `allow_teach_out` so the actuator cleanly forgets the sender.
+- [ ] **Per-device diagnostics download**: `async_get_device_diagnostics` +
+  a small raw-telegram ring buffer for one-click bug reports.
+- [ ] **Config entry migration scaffolding**: VERSION/minor + migrate hook
+  before the multi-channel record schema change (wave 3c) needs it.
+- [ ] **D2-03-0A NodOn Soft Button**: press/double/long triggers with
+  in-band battery.
+- Declined for now: secure/encrypted EnOcean (VAES rolling code) and Smart
+  Ack mailboxes (both major upstream library work, niche hardware today);
+  user-defined JSON EEP decoding (conflicts with the fixture-tested-profile
+  principle).
 
 ## Exploration
 
