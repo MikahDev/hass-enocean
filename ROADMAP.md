@@ -67,6 +67,28 @@ ordered roughly by value; nothing here is committed to a date.
   Profiles are added individually with telegram fixtures and tests; that is
   what keeps semantics (like the D5 contact polarity) verifiably correct.
 
+## UI/UX polish
+
+- [ ] **Startup status query (opt-in)**: a per-actuator option to send one
+  D2-01 CMD 0x3 status query when the entry loads, so switches confirm
+  within seconds and lose the assumed-state double-button UI after a
+  restart. Today the two on/off buttons show until the actuator's first
+  CMD 0x4 status (usually the first command). Deliberate constraint change:
+  an automatic transmission on reload, so it must be opt-in per device and
+  documented in the transmission inventory. Pair with RestoreEntity so the
+  last known state survives restarts as "assumed" in the meantime.
+- [ ] **Human-readable EEP names**: the add-manually dropdown now lists ~90
+  raw EEP codes with no hint what they are. Label every EEP selector,
+  discovery card title and manage/inbox list with the library's profile
+  name (e.g. "A5-04-01 - Temperature and humidity sensor").
+- [ ] **Edit devices in place**: manage currently only removes. Allow
+  renaming and changing the room (and the sender/channel for actuators)
+  without remove/re-add, keeping the entity registry intact.
+- [ ] **Show the manufacturer on the device page**: UTE and 4BS teach-ins
+  carry a manufacturer ID the library resolves; store it at discovery/
+  pairing time and set it as the HA device manufacturer instead of the
+  generic "EnOcean".
+
 ## Exploration
 
 - [ ] **Radio topology / repeater insight ("mesh")**: EnOcean has repeaters
