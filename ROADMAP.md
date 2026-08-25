@@ -48,9 +48,15 @@ ordered roughly by value; nothing here is committed to a date.
   metering, F6-10-00 window handle. Fixture-tested: hand-pinned telegram
   bytes for flagship profiles, encoder-built decode cases for scaling and
   label variants, and an entity-creation check across all 75 profiles.
-- [ ] **EEP expansion, wave 3 — remaining actuators**: other D2-01 types
-  (incl. metering variants as power/energy sensors), D2-20-02, A5-20-01
-  valve, A5-38-08 central command / Eltako dimmers.
+- [x] **EEP expansion, wave 3a — D2-01 family** (v0.11.0): all 16
+  single-channel D2-01 types as switches; metering variants (02/03/05/07/
+  0B/0C/0E) additionally get energy and power sensors (CMD 0x7 responses,
+  decoded locally so the per-device wire unit Ws/Wh/kWh/W/kW is normalised
+  to Wh/W) and a "Read meter" button sending the CMD 0x6 queries.
+- [ ] **EEP expansion, wave 3b — remaining actuators**: multi-channel D2-01
+  types 10..16 (need one record per channel: the device model keys records
+  by address today), D2-20-02 fan, A5-20-01 valve, A5-38-08 central
+  command / Eltako dimmers (would introduce light/fan platforms).
 - Non-goal: a generic EEP database covering the whole EnOcean catalogue.
   Profiles are added individually with telegram fixtures and tests; that is
   what keeps semantics (like the D5 contact polarity) verifiably correct.

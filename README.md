@@ -21,7 +21,7 @@ Repairs issues and FR/EN translations.
 |-----|--------|----------------|
 | D5-00-01 | Single-input contact | `binary_sensor` (opening; on = open) |
 | F6-02-01 / F6-02-02 | 2-rocker wall switch | Device triggers (press per button, release) |
-| D2-01-0F | 1-channel relay (e.g. NodOn micromodule) | `switch` with confirmed/assumed state |
+| D2-01-00..0F (16 types) | 1-channel relays (e.g. NodOn micromodules) | `switch` with confirmed/assumed state; metering types add energy/power sensors + a "Read meter" button |
 | D2-05-00 | Blinds/shutter actuator | `cover` with position, stop and status feedback |
 | A5-02-xx (25 types) | Temperature sensors | `sensor` |
 | A5-04-01..03 | Temperature and humidity sensors | `sensor` |

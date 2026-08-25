@@ -35,7 +35,10 @@ from enocean_async.semantics.instructions.cover import (
     CoverSetPositionAndAngle,
     CoverStop,
 )
-from enocean_async.semantics.instructions.switch import SetSwitchOutput
+from enocean_async.semantics.instructions.switch import (
+    QueryActuatorMeasurement,
+    SetSwitchOutput,
+)
 from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
@@ -53,6 +56,7 @@ from .const import (
     EEP_BATTERY_FLAG,
     EEP_CHANNEL_COUNT,
     EEP_CONTACT,
+    EEP_METERING,
     EEP_ROCKERS,
     EURID_MAX,
     EVENT_BUTTON,
@@ -65,6 +69,7 @@ from .const import (
     SIGNAL_CONNECTION,
     SIGNAL_CONTACT,
     SIGNAL_COVER_STATE,
+    SIGNAL_METERING,
     SIGNAL_SENSOR,
     SIGNAL_SWITCH_STATE,
     SIGNAL_TELEGRAM,
@@ -72,7 +77,12 @@ from .const import (
 )
 from .inbox import RadioInbox
 from .models import DeviceRecord, record_from_dict
-from .profiles import decode_a5_10_battery, decode_d5, decode_f6
+from .profiles import (
+    decode_a5_10_battery,
+    decode_d2_01_measurement,
+    decode_d5,
+    decode_f6,
+)
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -277,6 +287,20 @@ class EnOceanHub:
             self.hass, SIGNAL_TELEGRAM.format(address), rssi, dt_util.utcnow()
         )
 
+        if record.eep in EEP_METERING and erp1.rorg == RORG.RORG_VLD:
+            # CMD 0x7 measurement responses are decoded locally: the wire unit
+            # (Ws/Wh/kWh/W/kW) varies per device and the library's observation
+            # drops it, so values are normalised to Wh and W here.
+            measurement = decode_d2_01_measurement(bytes(erp1.telegram_data))
+            if measurement is not None:
+                async_dispatcher_send(
+                    self.hass,
+                    SIGNAL_METERING.format(address),
+                    measurement.channel,
+                    measurement.energy_wh,
+                    measurement.power_w,
+                )
+
         if record.eep in EEP_BATTERY_FLAG and erp1.rorg == RORG.RORG_4BS:
             # The BATT flag rides every data telegram; the panel's other
             # values reach HA through the library's observations.
@@ -456,6 +480,17 @@ class EnOceanHub:
             ) from err
         response = result.response
         return response is not None and response.return_code == ResponseCode.OK
+
+    async def async_query_measurement(self, record: DeviceRecord) -> bool:
+        """Send D2-01 CMD 0x6 queries for energy and power. Returns True only
+        if the transceiver acknowledged both."""
+        energy_ok = await self._async_send(
+            record, QueryActuatorMeasurement(query_power=False)
+        )
+        power_ok = await self._async_send(
+            record, QueryActuatorMeasurement(query_power=True)
+        )
+        return energy_ok and power_ok
 
     async def async_set_local(
         self,

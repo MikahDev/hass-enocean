@@ -262,6 +262,11 @@
         }
       }
     },
+    "button": {
+      "read_meter": {
+        "name": "Lire le compteur"
+      }
+    },
     "binary_sensor": {
       "battery_low": {
         "name": "Batterie"

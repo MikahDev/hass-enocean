@@ -33,7 +33,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import EnOceanConfigEntry
-from .const import SIGNAL_SENSOR, SIGNAL_TELEGRAM
+from .const import EEP_METERING, SIGNAL_METERING, SIGNAL_SENSOR, SIGNAL_TELEGRAM
 from .entity import EnOceanEntity
 from .gateway import sensor_entities_for_eep
 
@@ -173,6 +173,13 @@ async def async_setup_entry(
         entities.append(EnOceanTelegramCountSensor(hub, record))
         if record.sender_id is not None:
             entities.append(EnOceanSenderIDSensor(hub, record))
+        if record.eep in EEP_METERING:
+            entities.append(
+                EnOceanMeterSensor(hub, record, PROFILE_DESCRIPTIONS["energy"], False)
+            )
+            entities.append(
+                EnOceanMeterSensor(hub, record, PROFILE_DESCRIPTIONS["power"], True)
+            )
         if record.kind != "sensor":
             continue
         for entity_id, observable, is_binary in sensor_entities_for_eep(record.eep):
@@ -186,6 +193,39 @@ async def async_setup_entry(
                 continue
             entities.append(EnOceanProfileSensor(hub, record, description, observable))
     async_add_entities(entities)
+
+
+class EnOceanMeterSensor(EnOceanEntity, SensorEntity):
+    """Energy or power of a metering D2-01 actuator (CMD 0x7 responses,
+    locally normalised to Wh / W)."""
+
+    def __init__(self, hub, record, description, is_power: bool) -> None:
+        super().__init__(hub, record)
+        self.entity_description = description
+        self._is_power = is_power
+        self._attr_unique_id = f"{record.address}-{description.key}"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                SIGNAL_METERING.format(self.record.address),
+                self._on_measurement,
+            )
+        )
+
+    @callback
+    def _on_measurement(
+        self, channel: int, energy_wh: float | None, power_w: float | None
+    ) -> None:
+        if channel not in (self.record.channel, 0x1E):  # 0x1E = all channels
+            return
+        value = power_w if self._is_power else energy_wh
+        if value is None:
+            return
+        self._attr_native_value = value
+        self.async_write_ha_state()
 
 
 class EnOceanProfileSensor(EnOceanEntity, SensorEntity):

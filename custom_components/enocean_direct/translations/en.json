@@ -262,6 +262,11 @@
         }
       }
     },
+    "button": {
+      "read_meter": {
+        "name": "Read meter"
+      }
+    },
     "binary_sensor": {
       "battery_low": {
         "name": "Battery"

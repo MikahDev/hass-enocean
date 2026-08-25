@@ -44,6 +44,39 @@ def decode_d5(telegram_data: bytes) -> D5Reading | None:
     return D5Reading(is_open=(db0 & 0x01) == 0, is_teach_in=(db0 & 0x08) == 0)
 
 
+@dataclass(frozen=True)
+class D2Measurement:
+    channel: int  # radio channel; 0x1E = not channel-specific
+    energy_wh: float | None
+    power_w: float | None
+
+
+def decode_d2_01_measurement(telegram_data: bytes) -> D2Measurement | None:
+    """Decode a D2-01 CMD 0x7 Actuator Measurement Response.
+
+    Layout: byte0 low nibble = CMD; byte1 = UN (3 bits) | I/O (5 bits);
+    bytes 2-5 = 32-bit value. The wire unit varies per device (Ws, Wh, kWh,
+    W, kW) and the library's observation drops it, so this decoder normalises
+    energy to Wh and power to W. Returns None for anything else.
+    """
+    if len(telegram_data) != 6 or telegram_data[0] & 0x0F != 0x07:
+        return None
+    unit = telegram_data[1] >> 5
+    channel = telegram_data[1] & 0x1F
+    value = int.from_bytes(telegram_data[2:6], "big")
+    if unit == 0x00:  # Ws
+        return D2Measurement(channel, value / 3600, None)
+    if unit == 0x01:  # Wh
+        return D2Measurement(channel, float(value), None)
+    if unit == 0x02:  # kWh
+        return D2Measurement(channel, value * 1000.0, None)
+    if unit == 0x03:  # W
+        return D2Measurement(channel, None, float(value))
+    if unit == 0x04:  # kW
+        return D2Measurement(channel, None, value * 1000.0)
+    return None
+
+
 def decode_a5_10_battery(telegram_data: bytes) -> bool | None:
     """Decode the BATT flag of an A5-10-20/21 telegram. Returns True when the
     battery is low, None for teach-ins or malformed payloads."""

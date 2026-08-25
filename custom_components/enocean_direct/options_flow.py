@@ -23,7 +23,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
-    EEP_ACTUATOR,
+    EEP_ACTUATORS,
     EEP_CHANNEL_COUNT,
     EURID_MAX,
     KEY_ADDRESS,
@@ -103,7 +103,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
     async def async_step_module_params(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        actuators = [raw for raw in self._raw_devices if raw[KEY_EEP] == EEP_ACTUATOR]
+        actuators = [raw for raw in self._raw_devices if raw[KEY_EEP] in EEP_ACTUATORS]
         if not actuators:
             return self.async_abort(reason="no_actuators")
         if user_input is not None:

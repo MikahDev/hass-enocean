@@ -15,7 +15,8 @@ Talks to an EnOcean USB transceiver directly via the enocean-async library. No M
 - Never add an open learning mode or an arbitrary-packet send service. Transmission
   is limited to D2-01 switch and D2-05 cover commands from configured entities,
   D2-01 CMD 0x2 Actuator Set Local from the module-parameters options step
-  (spec-encoded, every field explicit in the form), plus
+  (spec-encoded, every field explicit in the form), D2-01 CMD 0x6 measurement
+  queries from the user-pressed "Read meter" button, plus
   teach-in responses the library sends inside a guided-pairing window
   (user-initiated from a discovery card or the Configure menu, time-bounded by
   PAIRING_TIMEOUT; the discovery-card window is focused on that one device, the

@@ -4,7 +4,13 @@ from homeassistant.const import Platform
 
 DOMAIN = "enocean_direct"
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.COVER, Platform.SENSOR, Platform.SWITCH]
+PLATFORMS = [
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.COVER,
+    Platform.SENSOR,
+    Platform.SWITCH,
+]
 
 CONF_DEVICE_PATH = "device"
 CONF_BASE_ID = "base_id"
@@ -20,6 +26,18 @@ KEY_AREA = "area_id"
 EEP_CONTACT = "D5-00-01"
 EEP_ROCKERS = ("F6-02-01", "F6-02-02")
 EEP_ACTUATOR = "D2-01-0F"
+# All single-channel D2-01 switch types the library defines. The multi-channel
+# types (D2-01-10..16) need one record per channel and are not supported yet.
+EEP_ACTUATORS = (
+    "D2-01-00", "D2-01-01", "D2-01-02", "D2-01-03", "D2-01-04", "D2-01-05",
+    "D2-01-06", "D2-01-07", "D2-01-08", "D2-01-09", "D2-01-0A", "D2-01-0B",
+    "D2-01-0C", "D2-01-0D", "D2-01-0E", "D2-01-0F",
+)  # fmt: skip
+# D2-01 types with energy/power metering (CMD 0x7 measurement responses).
+EEP_METERING = (
+    "D2-01-02", "D2-01-03", "D2-01-05", "D2-01-07",
+    "D2-01-0B", "D2-01-0C", "D2-01-0E",
+)  # fmt: skip
 EEP_COVER = "D2-05-00"
 
 # Receive-only sensor profiles (wave 2): every type of these families that the
@@ -40,14 +58,14 @@ EEP_SENSORS = (
     "A5-12-02", "A5-12-03", "F6-10-00",
 )  # fmt: skip
 
-SUPPORTED_EEPS = (EEP_CONTACT, *EEP_ROCKERS, EEP_ACTUATOR, EEP_COVER, *EEP_SENSORS)
+SUPPORTED_EEPS = (EEP_CONTACT, *EEP_ROCKERS, *EEP_ACTUATORS, EEP_COVER, *EEP_SENSORS)
 
 # Room panels whose DB0 carries a battery OK/low flag (decoded locally).
 EEP_BATTERY_FLAG = ("A5-10-20", "A5-10-21")
 
-# Radio channels per transmitting EEP (both are single-channel). Membership
+# Radio channels per transmitting EEP (all single-channel today). Membership
 # doubles as "needs a sender ID and a channel".
-EEP_CHANNEL_COUNT = {EEP_ACTUATOR: 1, EEP_COVER: 1}
+EEP_CHANNEL_COUNT = {**dict.fromkeys(EEP_ACTUATORS, 1), EEP_COVER: 1}
 
 # Device (radio) addresses must be EURIDs; base-range addresses are senders.
 EURID_MAX = 0xFF7FFFFF
@@ -72,6 +90,8 @@ SIGNAL_TELEGRAM = f"{DOMAIN}_telegram_{{}}"  # .format(address)
 SIGNAL_SENSOR = f"{DOMAIN}_sensor_{{}}"  # .format(address)
 # Battery low flag from an EEP_BATTERY_FLAG device: (is_low,).
 SIGNAL_BATTERY = f"{DOMAIN}_battery_{{}}"  # .format(address)
+# Normalised D2-01 measurement: (channel, energy_wh | None, power_w | None).
+SIGNAL_METERING = f"{DOMAIN}_metering_{{}}"  # .format(address)
 
 EVENT_BUTTON = f"{DOMAIN}_event"
 
