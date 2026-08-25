@@ -11,7 +11,7 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 
-from .const import DOMAIN, PLATFORMS
+from .const import CONF_QUERY_STARTUP, DOMAIN, PLATFORMS
 from .gateway import EnOceanHub
 
 _LOGGER = logging.getLogger(__name__)
@@ -35,6 +35,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: EnOceanConfigEntry) -> b
         # Any failure after the descriptor is open must release it.
         await hub.async_stop()
         raise
+
+    if entry.options.get(CONF_QUERY_STARTUP, False):
+        # After the platforms, so entities are subscribed when replies arrive.
+        entry.async_create_background_task(
+            hass, hub.async_query_startup_states(), "enocean_direct_startup_query"
+        )
 
     async def _on_hass_stop(_: Event) -> None:
         await hub.async_stop()

@@ -69,14 +69,14 @@ ordered roughly by value; nothing here is committed to a date.
 
 ## UI/UX polish
 
-- [ ] **Startup status query (opt-in)**: a per-actuator option to send one
-  D2-01 CMD 0x3 status query when the entry loads, so switches confirm
-  within seconds and lose the assumed-state double-button UI after a
-  restart. Today the two on/off buttons show until the actuator's first
-  CMD 0x4 status (usually the first command). Deliberate constraint change:
-  an automatic transmission on reload, so it must be opt-in per device and
-  documented in the transmission inventory. Pair with RestoreEntity so the
-  last known state survives restarts as "assumed" in the meantime.
+- [x] **Startup status query (opt-in)** (v0.13.0): Configure > Gateway
+  settings > "Query status on startup" sends one status query per configured
+  switch (D2-01 CMD 0x3) and cover (D2-05 position query) when the entry
+  loads, so entities confirm within seconds after a restart and lose the
+  assumed-state double-button UI. Hub-wide rather than per-device (one knob;
+  per-device granularity can come with edit-in-place). Off by default; a
+  documented, deliberate automatic transmission. Switches additionally
+  restore their last state as "assumed" across restarts.
 - [ ] **Human-readable EEP names**: the add-manually dropdown now lists ~90
   raw EEP codes with no hint what they are. Label every EEP selector,
   discovery card title and manage/inbox list with the library's profile

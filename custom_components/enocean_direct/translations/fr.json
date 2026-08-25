@@ -75,6 +75,7 @@
           "add_manual": "Ajouter un appareil manuellement",
           "module_params": "Configurer les parametres d'actionneur",
           "manage": "Gerer les appareils configures",
+          "settings": "Reglages de la passerelle",
           "import_devices": "Importer un inventaire",
           "export_devices": "Exporter une sauvegarde"
         }
@@ -137,6 +138,13 @@
         "title": "Appareils configures",
         "data": {
           "address": "Appareil"
+        }
+      },
+      "settings": {
+        "title": "Reglages de la passerelle",
+        "description": "Interroger l'etat au demarrage envoie une requete d'etat a chaque interrupteur et volet configure au chargement de l'integration, pour que leur etat soit confirme quelques secondes apres un redemarrage (une bascule au lieu des deux boutons on/off). Cela transmet une fois par appareil a chaque rechargement.",
+        "data": {
+          "query_on_startup": "Interroger l'etat au demarrage"
         }
       },
       "remove_confirm": {

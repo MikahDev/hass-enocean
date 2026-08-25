@@ -17,7 +17,9 @@ Talks to an EnOcean USB transceiver directly via the enocean-async library. No M
   configured entities,
   D2-01 CMD 0x2 Actuator Set Local from the module-parameters options step
   (spec-encoded, every field explicit in the form), D2-01 CMD 0x6 measurement
-  queries from the user-pressed "Read meter" button, plus
+  queries from the user-pressed "Read meter" button, one status query per
+  switch/cover at entry load when the off-by-default "Query status on
+  startup" gateway setting is enabled, plus
   teach-in responses the library sends inside a guided-pairing window
   (user-initiated from a discovery card or the Configure menu, time-bounded by
   PAIRING_TIMEOUT; the discovery-card window is focused on that one device, the

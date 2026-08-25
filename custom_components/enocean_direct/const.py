@@ -16,6 +16,8 @@ PLATFORMS = [
 CONF_DEVICE_PATH = "device"
 CONF_BASE_ID = "base_id"
 CONF_DEVICES = "devices"
+# Hub-wide opt-in: query actuator/cover status once after the entry loads.
+CONF_QUERY_STARTUP = "query_on_startup"
 
 KEY_ADDRESS = "address"
 KEY_EEP = "eep"

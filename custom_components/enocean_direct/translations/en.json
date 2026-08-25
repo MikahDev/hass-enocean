@@ -75,6 +75,7 @@
           "add_manual": "Add a device manually",
           "module_params": "Configure actuator parameters",
           "manage": "Manage configured devices",
+          "settings": "Gateway settings",
           "import_devices": "Import an inventory",
           "export_devices": "Export a backup"
         }
@@ -137,6 +138,13 @@
         "title": "Configured devices",
         "data": {
           "address": "Device"
+        }
+      },
+      "settings": {
+        "title": "Gateway settings",
+        "description": "Query status on startup sends one status query to every configured switch and cover when the integration loads, so their state is confirmed within seconds after a restart (a toggle instead of the two on/off buttons). This transmits once per device per reload.",
+        "data": {
+          "query_on_startup": "Query status on startup"
         }
       },
       "remove_confirm": {

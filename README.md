@@ -38,9 +38,11 @@ Repairs issues and FR/EN translations.
 - **Passive by default.** The integration only transmits for configured
   D2-01 switch, D2-05 cover and D2-20-02 fan entities, the user-pressed
   "Read meter" button (D2-01 CMD 0x6 queries), the module-parameters step
-  (D2-01 CMD 0x2, every field shown before sending), and the teach-in
-  response during guided pairing (see below). There is no open learning mode
-  and no arbitrary-packet API.
+  (D2-01 CMD 0x2, every field shown before sending), the teach-in
+  response during guided pairing (see below), and, if you enable the
+  off-by-default "Query status on startup" gateway setting, one status query
+  per switch/cover when the integration loads. There is no open learning
+  mode and no arbitrary-packet API.
 - **Sender IDs are explicit or paired.** For a device migrated from another
   controller you enter the sender ID it already knows (the transceiver Base ID
   is proposed as a default), so validated historical associations survive. For

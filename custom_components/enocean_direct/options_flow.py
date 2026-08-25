@@ -23,6 +23,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
+    CONF_QUERY_STARTUP,
     EEP_ACTUATORS,
     EEP_CHANNEL_COUNT,
     EURID_MAX,
@@ -76,7 +77,10 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         return self.config_entry.data.get(CONF_BASE_ID)
 
     def _save(self, raw_devices: list[dict[str, Any]]) -> ConfigFlowResult:
-        return self.async_create_entry(data={CONF_DEVICES: raw_devices})
+        # Preserve non-device options (e.g. the startup-query setting).
+        return self.async_create_entry(
+            data={**self.config_entry.options, CONF_DEVICES: raw_devices}
+        )
 
     # ------------------------------------------------------------------
     # steps
@@ -92,9 +96,34 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                 "add_manual",
                 "module_params",
                 "manage",
+                "settings",
                 "import_devices",
                 "export_devices",
             ],
+        )
+
+    async def async_step_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                data={
+                    **self.config_entry.options,
+                    CONF_QUERY_STARTUP: user_input[CONF_QUERY_STARTUP],
+                }
+            )
+        return self.async_show_form(
+            step_id="settings",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_QUERY_STARTUP,
+                        default=self.config_entry.options.get(
+                            CONF_QUERY_STARTUP, False
+                        ),
+                    ): bool,
+                }
+            ),
         )
 
     # ------------------------------------------------------------------

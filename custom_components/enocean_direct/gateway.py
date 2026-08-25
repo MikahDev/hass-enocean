@@ -32,12 +32,14 @@ from enocean_async.semantics.instruction import Instruction
 from enocean_async.semantics.instructions.cover import (
     CoverClose,
     CoverOpen,
+    CoverQueryPositionAndAngle,
     CoverSetPositionAndAngle,
     CoverStop,
 )
 from enocean_async.semantics.instructions.fan import SetFanSpeed
 from enocean_async.semantics.instructions.switch import (
     QueryActuatorMeasurement,
+    QueryActuatorStatus,
     SetSwitchOutput,
 )
 from homeassistant.config_entries import SOURCE_INTEGRATION_DISCOVERY
@@ -500,6 +502,22 @@ class EnOceanHub:
         """Send a D2-20-02 fan control message. fan_speed: 0-100 percent,
         253 = Auto, 254 = device default. Room size fields stay 'no change'."""
         return await self._async_send(record, SetFanSpeed(fan_speed=fan_speed))
+
+    async def async_query_startup_states(self) -> None:
+        """Opt-in (CONF_QUERY_STARTUP): one status query per switch and cover
+        so entities confirm right after a restart instead of on their first
+        command. Failures are logged, never fatal: a dead actuator must not
+        take the entry down."""
+        for record in self.devices.values():
+            try:
+                if record.kind == "actuator":
+                    await self._async_send(record, QueryActuatorStatus())
+                elif record.kind == "cover":
+                    await self._async_send(record, CoverQueryPositionAndAngle())
+            except HomeAssistantError as err:
+                _LOGGER.warning(
+                    "Startup status query for %s failed: %s", record.address, err
+                )
 
     async def async_query_measurement(self, record: DeviceRecord) -> bool:
         """Send D2-01 CMD 0x6 queries for energy and power. Returns True only
