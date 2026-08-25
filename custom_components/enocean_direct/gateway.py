@@ -147,6 +147,15 @@ def sensor_entities_for_eep(eep: str) -> list[tuple[str, str, bool]]:
     return out
 
 
+# Library cover states as seen from an inverted (backwards-wired) unit.
+_INVERTED_COVER_STATE = {
+    "open": "closed",
+    "closed": "open",
+    "opening": "closing",
+    "closing": "opening",
+}
+
+
 def _rssi_dbm(raw: int | None) -> int | None:
     """Convert the ERP1 optional-data RSSI byte to dBm (0xFF = not available)."""
     if raw is None or raw in (0x00, 0xFF):
@@ -440,19 +449,30 @@ class EnOceanHub:
             Observable.POSITION in values or Observable.COVER_STATE in values
         ):
             # EnOcean D2-05 position: 0 = open, 100 = closed. HA covers use
-            # 100 = open, so invert here. 101-127 mean "unknown".
-            raw_pos = values.get(Observable.POSITION)
-            position = (
-                100 - int(raw_pos)
-                if isinstance(raw_pos, (int, float)) and 0 <= raw_pos <= 100
-                else None
-            )
+            # 100 = open, so convert here. 101-127 mean "unknown". A record
+            # marked invert (unit wired backwards) mirrors the conversion and
+            # the derived movement direction, matching the swapped TX below.
             address = f"{int(observation.device):08X}"
+            record = self.devices.get(address)
+            inverted = record is not None and record.invert
+            raw_pos = values.get(Observable.POSITION)
+            position = None
+            if isinstance(raw_pos, (int, float)) and 0 <= raw_pos <= 100:
+                position = int(raw_pos) if inverted else 100 - int(raw_pos)
+            cover_state = values.get(Observable.COVER_STATE)
+            if raw_pos is not None and position is None:
+                # "Unknown" position (101..127): the library still derives a
+                # direction by comparing it with the previous position, which
+                # is meaningless. Watchdog "stopped" observations carry no
+                # POSITION at all and still pass through.
+                cover_state = None
+            if inverted and cover_state is not None:
+                cover_state = _INVERTED_COVER_STATE.get(cover_state, cover_state)
             async_dispatcher_send(
                 self.hass,
                 SIGNAL_COVER_STATE.format(address),
                 position,
-                values.get(Observable.COVER_STATE),
+                cover_state,
             )
             return
         if observation.entity == "fan" and Observable.FAN_SPEED in values:
@@ -533,10 +553,15 @@ class EnOceanHub:
         )
 
     async def async_open_cover(self, record: DeviceRecord) -> bool:
-        return await self._async_send(record, CoverOpen())
+        # An inverted record (unit wired backwards) sends the opposite command.
+        return await self._async_send(
+            record, CoverClose() if record.invert else CoverOpen()
+        )
 
     async def async_close_cover(self, record: DeviceRecord) -> bool:
-        return await self._async_send(record, CoverClose())
+        return await self._async_send(
+            record, CoverOpen() if record.invert else CoverClose()
+        )
 
     async def async_stop_cover(self, record: DeviceRecord) -> bool:
         return await self._async_send(record, CoverStop())
@@ -544,9 +569,11 @@ class EnOceanHub:
     async def async_set_cover_position(
         self, record: DeviceRecord, ha_position: int
     ) -> bool:
-        """Move to an HA position (100 = open); D2-05 uses 0 = open."""
+        """Move to an HA position (100 = open); D2-05 uses 0 = open, so the
+        value is mirrored unless the record is inverted."""
+        position = ha_position if record.invert else 100 - ha_position
         return await self._async_send(
-            record, CoverSetPositionAndAngle(position=100 - ha_position, angle=None)
+            record, CoverSetPositionAndAngle(position=position, angle=None)
         )
 
     async def _async_send(self, record: DeviceRecord, command: Instruction) -> bool:

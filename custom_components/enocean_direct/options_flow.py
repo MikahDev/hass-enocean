@@ -1,4 +1,5 @@
-"""Options flow: radio inbox, pairing, manual add, manage, import and export."""
+"""Options flow: radio inbox, pairing, manual add, manage (edit / remove),
+import and export."""
 
 from __future__ import annotations
 
@@ -7,6 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlowWithReload
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.selector import (
     AreaSelector,
     NumberSelector,
@@ -24,13 +26,16 @@ from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
     CONF_QUERY_STARTUP,
+    DOMAIN,
     EEP_ACTUATORS,
     EEP_CHANNEL_COUNT,
+    EEP_COVER,
     EURID_MAX,
     KEY_ADDRESS,
     KEY_AREA,
     KEY_CHANNEL,
     KEY_EEP,
+    KEY_INVERT,
     KEY_NAME,
     KEY_SENDER_ID,
     SUPPORTED_EEPS,
@@ -56,7 +61,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
     def __init__(self) -> None:
         self._pending: dict[str, Any] = {}
         self._import_records: list[DeviceRecord] | None = None
-        self._remove_address: str | None = None
+        self._manage_address: str | None = None
         self._pair_task: asyncio.Task | None = None
         self._pair_error: str | None = None
         self._params_address: str | None = None
@@ -430,8 +435,8 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         if not devices:
             return self.async_abort(reason="no_devices")
         if user_input is not None:
-            self._remove_address = user_input[KEY_ADDRESS]
-            return await self.async_step_remove_confirm()
+            self._manage_address = user_input[KEY_ADDRESS]
+            return await self.async_step_manage_device()
         options = [
             SelectOptionDict(
                 value=raw[KEY_ADDRESS],
@@ -452,24 +457,142 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             ),
         )
 
-    async def async_step_remove_confirm(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        target = next(
+    def _manage_target(self) -> dict[str, Any] | None:
+        return next(
             (
                 raw
                 for raw in self._raw_devices
-                if raw[KEY_ADDRESS] == self._remove_address
+                if raw[KEY_ADDRESS] == self._manage_address
             ),
             None,
         )
+
+    async def async_step_manage_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        target = self._manage_target()
+        if target is None:
+            return self.async_abort(reason="no_devices")
+        return self.async_show_menu(
+            step_id="manage_device",
+            menu_options=["edit_device", "remove_confirm"],
+            description_placeholders={
+                "name": target[KEY_NAME],
+                "address": target[KEY_ADDRESS],
+                "eep": target[KEY_EEP],
+            },
+        )
+
+    async def async_step_edit_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Edit in place: name and room for every device, sender ID and
+        channel for transmitting ones, direction inversion for covers. The
+        address and EEP are identity and stay fixed, so entity registry
+        entries (unique_id = address-channel) survive the edit."""
+        target = self._manage_target()
+        if target is None:
+            return self.async_abort(reason="no_devices")
+        record = record_from_dict(target)
+        registry = dr.async_get(self.hass)
+        device = registry.async_get_device(identifiers={(DOMAIN, record.address)})
+        # What the user currently sees: a UI rename (name_by_user) wins.
+        current_name = (device.name_by_user or device.name) if device else None
+        current_name = current_name or record.name
+        current_area = device.area_id if device else record.area_id
+        transmits = record.eep in EEP_CHANNEL_COUNT
+        base_id = self._base_id
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            name = user_input[KEY_NAME].strip() or record.address
+            area_id = user_input.get(KEY_AREA)
+            sender_id = record.sender_id
+            channel = record.channel
+            if transmits:
+                try:
+                    sender_id = normalize_address(user_input[KEY_SENDER_ID])
+                except AddressError:
+                    errors[KEY_SENDER_ID] = "invalid_sender"
+                else:
+                    if base_id is not None and not sender_in_base_range(
+                        sender_id, base_id
+                    ):
+                        errors[KEY_SENDER_ID] = "sender_out_of_range"
+                channel = int(user_input[KEY_CHANNEL])
+            if not errors:
+                updated = DeviceRecord(
+                    address=record.address,
+                    eep=record.eep,
+                    name=name,
+                    sender_id=sender_id,
+                    channel=channel,
+                    area_id=area_id,
+                    invert=bool(user_input.get(KEY_INVERT, False))
+                    if record.eep == EEP_COVER
+                    else False,
+                )
+                if device is not None:
+                    # async_get_or_create on reload refreshes the integration
+                    # name but a UI rename would still mask it; the name typed
+                    # here is what the user wants to see, so clear the override.
+                    changes: dict[str, Any] = {}
+                    if name != current_name:
+                        changes.update(name=name, name_by_user=None)
+                    if area_id != current_area:
+                        changes["area_id"] = area_id
+                    if changes:
+                        registry.async_update_device(device.id, **changes)
+                devices = [
+                    updated.as_dict() if raw[KEY_ADDRESS] == record.address else raw
+                    for raw in self._raw_devices
+                ]
+                return self._save(devices)
+
+        schema: dict[Any, Any] = {
+            vol.Required(KEY_NAME, default=current_name): TextSelector(),
+            vol.Optional(
+                KEY_AREA, description={"suggested_value": current_area}
+            ): AreaSelector(),
+        }
+        if transmits:
+            max_channel = EEP_CHANNEL_COUNT[record.eep] - 1
+            schema[vol.Required(KEY_SENDER_ID, default=record.sender_id or "")] = (
+                TextSelector()
+            )
+            schema[vol.Required(KEY_CHANNEL, default=record.channel)] = NumberSelector(
+                NumberSelectorConfig(
+                    min=0, max=max_channel, step=1, mode=NumberSelectorMode.BOX
+                )
+            )
+        if record.eep == EEP_COVER:
+            schema[vol.Required(KEY_INVERT, default=record.invert)] = bool
+        data_schema = vol.Schema(schema)
+        if user_input is not None:
+            # Re-render after a validation error keeps what was typed.
+            data_schema = self.add_suggested_values_to_schema(data_schema, user_input)
+        return self.async_show_form(
+            step_id="edit_device",
+            data_schema=data_schema,
+            errors=errors,
+            description_placeholders={
+                "name": current_name,
+                "address": record.address,
+                "eep": record.eep,
+                "base_id": base_id or "unknown",
+            },
+        )
+
+    async def async_step_remove_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        target = self._manage_target()
         if target is None:
             return self.async_abort(reason="no_devices")
         if user_input is not None:
             remaining = [
                 raw
                 for raw in self._raw_devices
-                if raw[KEY_ADDRESS] != self._remove_address
+                if raw[KEY_ADDRESS] != self._manage_address
             ]
             return self._save(remaining)
         return self.async_show_form(
@@ -523,9 +646,10 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             f"- {record.name} | {record.address} | {record.eep}"
             + (
                 f" | sender {record.sender_id} | channel {record.channel}"
-                if record.kind == "actuator"
+                if record.sender_id is not None
                 else ""
             )
+            + (" | inverted" if record.invert else "")
             for record in self._import_records
         )
         return self.async_show_form(

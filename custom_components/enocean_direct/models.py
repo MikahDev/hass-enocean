@@ -24,6 +24,7 @@ from .const import (
     KEY_AREA,
     KEY_CHANNEL,
     KEY_EEP,
+    KEY_INVERT,
     KEY_NAME,
     KEY_SENDER_ID,
     SENDER_OFFSET_MAX,
@@ -71,6 +72,7 @@ class DeviceRecord:
     sender_id: str | None = None  # actuators only
     channel: int | None = None  # actuators only, radio channel (0-based)
     area_id: str | None = None  # HA area, applied when the device is created
+    invert: bool = False  # covers only: swap open/close, mirror position
 
     @property
     def kind(self) -> str:
@@ -103,6 +105,8 @@ class DeviceRecord:
             out[KEY_CHANNEL] = self.channel
         if self.area_id is not None:
             out[KEY_AREA] = self.area_id
+        if self.invert:
+            out[KEY_INVERT] = True
         return out
 
 
@@ -115,6 +119,7 @@ def record_from_dict(raw: dict[str, Any]) -> DeviceRecord:
         sender_id=raw.get(KEY_SENDER_ID),
         channel=raw.get(KEY_CHANNEL),
         area_id=raw.get(KEY_AREA),
+        invert=bool(raw.get(KEY_INVERT, False)),
     )
 
 
@@ -151,6 +156,18 @@ def validate_record(
             errors.append(f"{address}: area_id must be a non-empty string")
         else:
             area_id = raw_area
+
+    invert = False
+    raw_invert = raw.get(KEY_INVERT)
+    if raw_invert is not None:
+        if not isinstance(raw_invert, bool):
+            errors.append(f"{address}: invert must be true or false")
+        elif eep != EEP_COVER:
+            # Cover-only. The D5-00-01 contact polarity in particular is
+            # spec-verified and must never be flipped in configuration.
+            errors.append(f"{address}: invert does not apply to {eep}")
+        else:
+            invert = raw_invert
 
     sender_id: str | None = None
     channel: int | None = None
@@ -193,7 +210,10 @@ def validate_record(
 
     if errors:
         return None, errors
-    return DeviceRecord(address, eep, name, sender_id, channel, area_id), []
+    return (
+        DeviceRecord(address, eep, name, sender_id, channel, area_id, invert=invert),
+        [],
+    )
 
 
 @dataclass(frozen=True)

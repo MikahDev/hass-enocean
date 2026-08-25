@@ -136,8 +136,31 @@
       },
       "manage": {
         "title": "Appareils configures",
+        "description": "Choisissez un appareil a modifier ou a supprimer.",
         "data": {
           "address": "Appareil"
+        }
+      },
+      "manage_device": {
+        "title": "Gerer l'appareil",
+        "description": "{name} ({address}, {eep})",
+        "menu_options": {
+          "edit_device": "Modifier",
+          "remove_confirm": "Supprimer"
+        }
+      },
+      "edit_device": {
+        "title": "Modifier l'appareil",
+        "description": "{name} ({address}, {eep}). L'adresse et le profil sont l'identite de l'appareil et ne changent pas ; les entites conservent leurs identifiants. Effacer la piece retire l'appareil de sa piece. Pour les appareils emetteurs, le sender ID doit rester dans la plage du Base ID du transceiver ({base_id} a +127).",
+        "data": {
+          "name": "Nom",
+          "area_id": "Piece",
+          "sender_id": "Sender ID du controleur",
+          "channel": "Canal radio (0 = Canal 1)",
+          "invert": "Inverser le sens"
+        },
+        "data_description": {
+          "invert": "Pour un volet cable a l'envers : ouverture et fermeture sont echangees et la position rapportee est inversee. Seuls les volets peuvent etre inverses ; la polarite du contact est fixee par son profil."
         }
       },
       "settings": {
@@ -153,7 +176,7 @@
       },
       "import_devices": {
         "title": "Importer un inventaire",
-        "description": "Collez un document JSON exporte. Format : \"version\": 1 au premier niveau et une liste \"devices\" ; chaque appareil a \"address\" (8 chiffres hexadecimaux), \"eep\", \"name\", et pour les actionneurs \"sender_id\" et \"channel\". Le fichier entier est valide d'abord ; rien n'est enregistre si un enregistrement est invalide.\n\n{detail}",
+        "description": "Collez un document JSON d'export. Format : un \"version\": 1 de premier niveau et une liste \"devices\" ; chaque appareil a \"address\" (8 chiffres hexadecimaux), \"eep\", \"name\", et pour les appareils emetteurs \"sender_id\" et \"channel\". Optionnel : \"area_id\", et pour les volets D2-05-00 uniquement \"invert\": true. Le fichier entier est valide d'abord ; rien n'est enregistre si un enregistrement est invalide.\n\n{detail}",
         "data": {
           "document": "Document JSON"
         }

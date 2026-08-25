@@ -25,6 +25,9 @@ KEY_NAME = "name"
 KEY_SENDER_ID = "sender_id"
 KEY_CHANNEL = "channel"
 KEY_AREA = "area_id"
+# Covers only: swap open/close and mirror the position for a unit wired
+# backwards. Never offered for the D5-00-01 contact (polarity is spec-pinned).
+KEY_INVERT = "invert"
 
 EEP_CONTACT = "D5-00-01"
 EEP_ROCKERS = ("F6-02-01", "F6-02-02")

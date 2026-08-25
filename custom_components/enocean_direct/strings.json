@@ -136,8 +136,31 @@
       },
       "manage": {
         "title": "Configured devices",
+        "description": "Pick a device to edit or remove.",
         "data": {
           "address": "Device"
+        }
+      },
+      "manage_device": {
+        "title": "Manage device",
+        "description": "{name} ({address}, {eep})",
+        "menu_options": {
+          "edit_device": "Edit",
+          "remove_confirm": "Remove"
+        }
+      },
+      "edit_device": {
+        "title": "Edit device",
+        "description": "{name} ({address}, {eep}). The address and profile are the device's identity and cannot change; entities keep their IDs. Clearing the room removes the device from its room. For transmitting devices the sender ID must stay within the transceiver Base ID range ({base_id} to +127).",
+        "data": {
+          "name": "Name",
+          "area_id": "Room",
+          "sender_id": "Controller sender ID",
+          "channel": "Radio channel (0 = Channel 1)",
+          "invert": "Invert direction"
+        },
+        "data_description": {
+          "invert": "For a cover wired backwards: open and close are swapped and the reported position is mirrored. Only covers can be inverted; the contact polarity is fixed by its profile."
         }
       },
       "settings": {
@@ -153,7 +176,7 @@
       },
       "import_devices": {
         "title": "Import an inventory",
-        "description": "Paste a JSON export document. Format: a top-level \"version\": 1 and a \"devices\" list; each device has \"address\" (8 hex digits), \"eep\", \"name\", and for actuators \"sender_id\" and \"channel\". The whole file is validated first; nothing is saved if any record is invalid.\n\n{detail}",
+        "description": "Paste a JSON export document. Format: a top-level \"version\": 1 and a \"devices\" list; each device has \"address\" (8 hex digits), \"eep\", \"name\", and for transmitting devices \"sender_id\" and \"channel\". Optional: \"area_id\", and for D2-05-00 covers only \"invert\": true. The whole file is validated first; nothing is saved if any record is invalid.\n\n{detail}",
         "data": {
           "document": "JSON document"
         }

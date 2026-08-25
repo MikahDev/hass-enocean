@@ -92,6 +92,7 @@ class EnOceanCover(EnOceanEntity, CoverEntity):
             "radio_channel": self.record.channel,
             "channel_number": self.record.channel_number,
             "sender_id": self.record.sender_id,
+            "inverted": self.record.invert,
         }
 
     async def async_open_cover(self, **kwargs: Any) -> None:

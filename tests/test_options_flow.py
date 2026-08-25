@@ -251,7 +251,7 @@ async def test_export_contains_devices_no_secrets(
     assert doc["gateway"]["base_id"] == BASE_ID_HEX
     assert len(doc["devices"]) == 2
     # only recovery configuration keys, nothing else
-    allowed = {"address", "eep", "name", "sender_id", "channel"}
+    allowed = {"address", "eep", "name", "sender_id", "channel", "area_id", "invert"}
     for device in doc["devices"]:
         assert set(device) <= allowed
     assert set(doc) == {"version", "gateway", "devices"}
@@ -265,6 +265,10 @@ async def test_remove_device(hass: HomeAssistant, dongle: FakeDongle) -> None:
     result = await _menu(hass, entry, "manage")
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"address": CONTACT["address"]}
+    )
+    assert result["type"] is FlowResultType.MENU  # edit or remove
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "remove_confirm"}
     )
     assert result["step_id"] == "remove_confirm"
     assert result["description_placeholders"]["name"] == CONTACT["name"]
