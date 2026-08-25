@@ -53,10 +53,16 @@ ordered roughly by value; nothing here is committed to a date.
   0B/0C/0E) additionally get energy and power sensors (CMD 0x7 responses,
   decoded locally so the per-device wire unit Ws/Wh/kWh/W/kW is normalised
   to Wh/W) and a "Read meter" button sending the CMD 0x6 queries.
-- [ ] **EEP expansion, wave 3b — remaining actuators**: multi-channel D2-01
+- [x] **EEP expansion, wave 3b — D2-20-02 fan** (v0.12.0): native `fan`
+  entity (percentage, off, write-only Auto preset) with status feedback,
+  same sender rules and discovery/pairing as the other D2 actuators.
+- [ ] **EEP expansion, wave 3c — remaining actuators**: multi-channel D2-01
   types 10..16 (need one record per channel: the device model keys records
-  by address today), D2-20-02 fan, A5-20-01 valve, A5-38-08 central
-  command / Eltako dimmers (would introduce light/fan platforms).
+  by address today), A5-20-01 valve (bidirectional duty-cycle protocol,
+  needs a control-loop design and live hardware) and A5-38-08 central
+  command / Eltako dimmers (sender-addressed broadcast devices: different
+  teach-in model via learn telegrams, would introduce a light platform).
+  Each needs design decisions or hardware; not done blind.
 - Non-goal: a generic EEP database covering the whole EnOcean catalogue.
   Profiles are added individually with telegram fixtures and tests; that is
   what keeps semantics (like the D5 contact polarity) verifiably correct.

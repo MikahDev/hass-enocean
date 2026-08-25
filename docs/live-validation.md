@@ -124,6 +124,16 @@ F3. Optional (only if the installation wants it): set "State after a power
     failure" and power-cycle the module's supply once to verify the chosen
     state; then confirm the taught-in rocker still controls the relay.
 
+## Phase G - v0.11.0/v0.12.0: metering and fan [TX]
+
+G1. Metering D2-01 (if fitted): press the "Read meter" button once with a
+    known load on. Pass: energy and power sensors update within a few
+    seconds and the power value is plausible for the load.
+G2. D2-20-02 fan (if fitted): set 50%, then off, then Auto, observing the
+    unit. Pass: physical behaviour matches; the percentage follows the
+    unit's own status messages (Auto shows as a preset without a
+    percentage until the unit reports a numeric speed).
+
 ## Phase D - close-out
 
 D1. If all checks pass: uninstall or leave the MQTT add-on disabled (do not

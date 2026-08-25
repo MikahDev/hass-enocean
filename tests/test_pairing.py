@@ -174,7 +174,8 @@ async def test_menu_pairing_unsupported_eep_aborts(
     )
     assert result["type"] is FlowResultType.SHOW_PROGRESS
 
-    dongle.inject(ute_teach_in_frame(NEW_COVER, 0xD2, 0x20, 0x02))
+    # A5-20-01: the library knows it, this integration does not (yet)
+    dongle.inject(ute_teach_in_frame(NEW_COVER, 0xA5, 0x20, 0x01))
     await flush(hass)
 
     result = await hass.config_entries.options.async_configure(result["flow_id"])

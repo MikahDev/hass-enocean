@@ -23,6 +23,7 @@ Repairs issues and FR/EN translations.
 | F6-02-01 / F6-02-02 | 2-rocker wall switch | Device triggers (press per button, release) |
 | D2-01-00..0F (16 types) | 1-channel relays (e.g. NodOn micromodules) | `switch` with confirmed/assumed state; metering types add energy/power sensors + a "Read meter" button |
 | D2-05-00 | Blinds/shutter actuator | `cover` with position, stop and status feedback |
+| D2-20-02 | Fan control unit | `fan` (percentage, Auto preset) with status feedback |
 | A5-02-xx (25 types) | Temperature sensors | `sensor` |
 | A5-04-01..03 | Temperature and humidity sensors | `sensor` |
 | A5-06-01..05 | Light sensors | `sensor` |

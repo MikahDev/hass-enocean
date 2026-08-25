@@ -15,6 +15,7 @@ from .const import (
     EEP_CHANNEL_COUNT,
     EEP_CONTACT,
     EEP_COVER,
+    EEP_FAN,
     EEP_ROCKERS,
     EEP_SENSORS,
     EURID_MAX,
@@ -79,6 +80,8 @@ class DeviceRecord:
             return "rocker"
         if self.eep == EEP_COVER:
             return "cover"
+        if self.eep == EEP_FAN:
+            return "fan"
         if self.eep in EEP_SENSORS:
             return "sensor"
         return "actuator"

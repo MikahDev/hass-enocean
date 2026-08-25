@@ -35,6 +35,7 @@ from enocean_async.semantics.instructions.cover import (
     CoverSetPositionAndAngle,
     CoverStop,
 )
+from enocean_async.semantics.instructions.fan import SetFanSpeed
 from enocean_async.semantics.instructions.switch import (
     QueryActuatorMeasurement,
     SetSwitchOutput,
@@ -69,6 +70,7 @@ from .const import (
     SIGNAL_CONNECTION,
     SIGNAL_CONTACT,
     SIGNAL_COVER_STATE,
+    SIGNAL_FAN,
     SIGNAL_METERING,
     SIGNAL_SENSOR,
     SIGNAL_SWITCH_STATE,
@@ -363,6 +365,17 @@ class EnOceanHub:
                 values.get(Observable.COVER_STATE),
             )
             return
+        if observation.entity == "fan" and Observable.FAN_SPEED in values:
+            # D2-20-02 status: numeric percent only (the library drops the
+            # Auto/Default sentinels). A5-10 panels use entity id "fan_speed"
+            # with label strings and take the sensor path below instead.
+            address = f"{int(observation.device):08X}"
+            async_dispatcher_send(
+                self.hass,
+                SIGNAL_FAN.format(address),
+                int(values[Observable.FAN_SPEED]),
+            )
+            return
         if Observable.SWITCH_STATE in values and observation.entity.endswith(
             "_switch_state"
         ):
@@ -480,6 +493,11 @@ class EnOceanHub:
             ) from err
         response = result.response
         return response is not None and response.return_code == ResponseCode.OK
+
+    async def async_set_fan_speed(self, record: DeviceRecord, fan_speed: int) -> bool:
+        """Send a D2-20-02 fan control message. fan_speed: 0-100 percent,
+        253 = Auto, 254 = device default. Room size fields stay 'no change'."""
+        return await self._async_send(record, SetFanSpeed(fan_speed=fan_speed))
 
     async def async_query_measurement(self, record: DeviceRecord) -> bool:
         """Send D2-01 CMD 0x6 queries for energy and power. Returns True only
