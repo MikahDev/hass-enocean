@@ -84,6 +84,11 @@ class EnOceanFan(EnOceanEntity, FanEntity):
 
     async def async_set_percentage(self, percentage: int) -> None:
         await self._send(percentage)
+        # Optimistic until the unit's next status telegram, like the switch;
+        # also retracts a previously selected Auto preset.
+        self._attr_percentage = percentage
+        self._attr_preset_mode = None
+        self.async_write_ha_state()
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         await self._send(FS_AUTO)
@@ -104,9 +109,13 @@ class EnOceanFan(EnOceanEntity, FanEntity):
             await self.async_set_percentage(percentage)
         else:
             await self._send(FS_DEFAULT)  # the unit's own default speed
+            # The resulting speed is the unit's to report: unknown until then.
+            self._attr_percentage = None
+            self._attr_preset_mode = None
+            self.async_write_ha_state()
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        await self._send(0)
+        await self.async_set_percentage(0)
 
     async def _send(self, fan_speed: int) -> None:
         acknowledged = await self.hub.async_set_fan_speed(self.record, fan_speed)

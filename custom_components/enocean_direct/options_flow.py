@@ -134,25 +134,35 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         """One CMD 0x2 telegram sets every local parameter at once, so every
         consequential field is shown; nothing is written silently."""
+        from homeassistant.exceptions import HomeAssistantError
+
         hub = getattr(self.config_entry, "runtime_data", None)
         record = hub.devices.get(self._params_address) if hub else None
         if hub is None or hub.gateway is None or record is None:
             return self.async_abort(reason="not_loaded")
+        if not hub.connected:
+            return self.async_abort(reason="not_connected")
         errors: dict[str, str] = {}
         if user_input is not None:
-            acknowledged = await hub.async_set_local(
-                record,
-                taught_in_enabled=user_input["taught_in_enabled"],
-                overcurrent_restart=user_input["overcurrent_restart"],
-                local_control=user_input["local_control"],
-                power_failure_detection=user_input["power_failure_detection"],
-                default_state={"off": 0, "on": 1, "previous": 2}[
-                    user_input["default_state"]
-                ],
-            )
-            if acknowledged:
-                return self.async_abort(reason="params_sent")
-            errors["base"] = "not_acknowledged"
+            try:
+                acknowledged = await hub.async_set_local(
+                    record,
+                    taught_in_enabled=user_input["taught_in_enabled"],
+                    overcurrent_restart=user_input["overcurrent_restart"],
+                    local_control=user_input["local_control"],
+                    power_failure_detection=user_input["power_failure_detection"],
+                    default_state={"off": 0, "on": 1, "previous": 2}[
+                        user_input["default_state"]
+                    ],
+                )
+            except HomeAssistantError:
+                # e.g. the transceiver disconnected between render and submit
+                acknowledged = False
+                errors["base"] = "cannot_send"
+            else:
+                if acknowledged:
+                    return self.async_abort(reason="params_sent")
+                errors["base"] = "not_acknowledged"
         schema = vol.Schema(
             {
                 vol.Required("local_control", default=True): bool,

@@ -166,7 +166,8 @@
       "sender_out_of_range": "Le sender ID doit rester dans la plage du Base ID du transceiver (Base ID a Base ID +127).",
       "import_invalid": "Le document a ete rejete ; rien n'a ete enregistre. Voir les details ci-dessus.",
       "not_eurid": "Ceci est une adresse d'emetteur/base, pas une adresse d'appareil (les EURID d'appareil se terminent a FF7FFFFF).",
-      "not_acknowledged": "Le transceiver n'a pas acquitte la transmission. Rien n'a peut-etre ete ecrit ; verifiez le module et reessayez."
+      "not_acknowledged": "Le transceiver n'a pas acquitte la transmission. Rien n'a peut-etre ete ecrit ; verifiez le module et reessayez.",
+      "cannot_send": "La commande n'a pas pu etre envoyee (transceiver deconnecte ou sender invalide). Verifiez la passerelle et reessayez."
     },
     "abort": {
       "inbox_empty": "Aucun emetteur non configure n'a encore ete entendu.",

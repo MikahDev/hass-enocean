@@ -89,6 +89,41 @@ async def test_auto_preset(hass: HomeAssistant, dongle: FakeDongle) -> None:
     assert state.attributes["percentage"] == 25
 
 
+async def test_auto_preset_cleared_by_commands(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """An acknowledged off or numeric speed retracts the optimistic preset;
+    the entity must never report on after a commanded, acknowledged off."""
+    await _setup(hass)
+    dongle.inject(_status_frame(40))
+    await flush(hass)
+    await hass.services.async_call(
+        "fan",
+        "set_preset_mode",
+        {"entity_id": ENTITY, "preset_mode": "auto"},
+        blocking=True,
+    )
+    await hass.services.async_call(
+        "fan", "turn_off", {"entity_id": ENTITY}, blocking=True
+    )
+    state = hass.states.get(ENTITY)
+    assert state.state == "off"
+    assert state.attributes["preset_mode"] is None
+
+    await hass.services.async_call(
+        "fan",
+        "set_preset_mode",
+        {"entity_id": ENTITY, "preset_mode": "auto"},
+        blocking=True,
+    )
+    await hass.services.async_call(
+        "fan", "set_percentage", {"entity_id": ENTITY, "percentage": 50}, blocking=True
+    )
+    state = hass.states.get(ENTITY)
+    assert state.attributes["preset_mode"] is None
+    assert state.attributes["percentage"] == 50  # optimistic until status
+
+
 async def test_no_ack_raises(hass: HomeAssistant, dongle: FakeDongle) -> None:
     await _setup(hass)
     dongle.respond_to_radio = False

@@ -36,10 +36,11 @@ Repairs issues and FR/EN translations.
 ## Design rules
 
 - **Passive by default.** The integration only transmits for configured
-  D2-01 switch and D2-05 cover entities, the module-parameters step (D2-01
-  CMD 0x2, every field shown before sending), and the teach-in response
-  during guided pairing (see below). There is no open learning mode and no
-  arbitrary-packet API.
+  D2-01 switch, D2-05 cover and D2-20-02 fan entities, the user-pressed
+  "Read meter" button (D2-01 CMD 0x6 queries), the module-parameters step
+  (D2-01 CMD 0x2, every field shown before sending), and the teach-in
+  response during guided pairing (see below). There is no open learning mode
+  and no arbitrary-packet API.
 - **Sender IDs are explicit or paired.** For a device migrated from another
   controller you enter the sender ID it already knows (the transceiver Base ID
   is proposed as a default), so validated historical associations survive. For
@@ -53,8 +54,10 @@ Repairs issues and FR/EN translations.
   are preserved and required.
 - **No fake state.** A switch is "assumed" until the actuator's own status
   telegram (D2-01 CMD 0x4) confirms it; a cover's position is unknown until
-  its first position reply (D2-05 CMD 0x4). Unacknowledged commands raise an
-  error instead of flipping the UI.
+  its first position reply (D2-05 CMD 0x4); a fan's speed is optimistic
+  until its next status message, and its Auto preset is write-only (the EEP
+  cannot report it). Unacknowledged commands raise an error instead of
+  flipping the UI.
 - **One serial owner.** The serial descriptor is owned by one gateway object
   per config entry and is released on unload, reload, failed setup, USB
   disconnect and Home Assistant stop.

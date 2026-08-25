@@ -76,6 +76,16 @@ async def test_measurement_unit_normalisation(
     await flush(hass)
     assert hass.states.get(energy).state == "2.0"
 
+    # Wh: UN=1 -> byte1 0x20; value 17 -> 17 Wh
+    dongle.inject(erp1_frame(0xD2, [0x07, 0x20, 0, 0, 0, 17], METER_INT))
+    await flush(hass)
+    assert hass.states.get(energy).state == "17.0"
+
+    # kW: UN=4 -> byte1 0x80; value 3 -> 3000 W
+    dongle.inject(erp1_frame(0xD2, [0x07, 0x80, 0, 0, 0, 3], METER_INT))
+    await flush(hass)
+    assert hass.states.get(power).state == "3000.0"
+
 
 async def test_measurement_edge_cases_ignored(
     hass: HomeAssistant, dongle: FakeDongle

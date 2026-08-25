@@ -143,8 +143,10 @@ class EnOceanHub:
         self.inbox: RadioInbox = domain_data.setdefault(
             f"{entry.entry_id}_inbox", RadioInbox()
         )
-        for address in self.devices:
-            self.inbox.mark_configured(address)
+        # Sync both ways: a device added earlier disappears from the inbox's
+        # unconfigured list, and a removed one becomes addable again without
+        # waiting for its next telegram.
+        self.inbox.sync_configured(set(self.devices))
         self.gateway: Gateway | None = None
         self.connected = False
         self.base_id: str | None = entry.data.get(CONF_BASE_ID)

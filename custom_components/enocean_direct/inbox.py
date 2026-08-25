@@ -80,6 +80,11 @@ class RadioInbox:
         if address in self._entries:
             self._entries[address].configured = True
 
+    def sync_configured(self, configured_addresses: set[str]) -> None:
+        """Align every entry's configured flag with the given device set."""
+        for entry in self._entries.values():
+            entry.configured = entry.address in configured_addresses
+
     @property
     def entries(self) -> list[InboxEntry]:
         """Entries, most recently heard first."""

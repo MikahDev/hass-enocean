@@ -116,3 +116,22 @@ async def test_inbox_persists_across_reload(
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
     assert entry.runtime_data.inbox.get("0084AAAA") is not None
+
+
+async def test_removed_device_reappears_in_inbox(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """Removing a device must make its (persisted) inbox entry addable again
+    without waiting for the device's next telegram."""
+    entry = make_entry(hass, [CONTACT])
+    assert await setup_entry(hass, entry)
+    dongle.inject(d5_frame(CONTACT_INT, closed=True))  # heard while configured
+    await hass.async_block_till_done()
+    assert entry.runtime_data.inbox.get(CONTACT["address"]).configured is True
+
+    hass.config_entries.async_update_entry(entry, options={"devices": []})
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    inbox_entry = entry.runtime_data.inbox.get(CONTACT["address"])
+    assert inbox_entry is not None
+    assert inbox_entry.configured is False

@@ -102,3 +102,28 @@ async def test_no_actuators_aborts(hass: HomeAssistant, dongle: FakeDongle) -> N
     )
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "no_actuators"
+
+
+async def test_disconnected_between_render_and_submit(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """A USB drop after the form rendered aborts with a clear message
+    instead of crashing the flow with an unknown error."""
+    entry = make_entry(hass, [ACTUATOR])
+    assert await setup_entry(hass, entry)
+    result = await _to_form(hass, entry)
+    dongle.unplug()
+    await hass.async_block_till_done()
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            "local_control": True,
+            "taught_in_enabled": True,
+            "overcurrent_restart": False,
+            "power_failure_detection": False,
+            "default_state": "previous",
+        },
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "not_connected"
+    assert dongle.sent_radio == []

@@ -166,7 +166,8 @@
       "sender_out_of_range": "The sender ID must be within the transceiver Base ID range (Base ID to Base ID +127).",
       "import_invalid": "The document was rejected; nothing was saved. See the details above.",
       "not_eurid": "This is a sender/base address, not a device address (device EURIDs end at FF7FFFFF).",
-      "not_acknowledged": "The transceiver did not acknowledge the transmission. Nothing may have been written; check the module and try again."
+      "not_acknowledged": "The transceiver did not acknowledge the transmission. Nothing may have been written; check the module and try again.",
+      "cannot_send": "The command could not be sent (transceiver disconnected or sender invalid). Check the gateway and try again."
     },
     "abort": {
       "inbox_empty": "No unconfigured senders have been heard yet.",
