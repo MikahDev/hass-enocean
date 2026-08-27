@@ -76,6 +76,7 @@
           "module_params": "Configurer les parametres d'actionneur",
           "manage": "Gerer les appareils configures",
           "settings": "Reglages de la passerelle",
+          "base_id": "Base ID du transceiver (recuperation)",
           "import_devices": "Importer un inventaire",
           "export_devices": "Exporter une sauvegarde"
         }
@@ -165,9 +166,24 @@
       },
       "settings": {
         "title": "Reglages de la passerelle",
-        "description": "Interroger l'etat au demarrage envoie une requete d'etat a chaque interrupteur et volet configure au chargement de l'integration, pour que leur etat soit confirme quelques secondes apres un redemarrage (une bascule au lieu des deux boutons on/off). Cela transmet une fois par appareil a chaque rechargement.",
+        "description": "Interroger l'etat au demarrage envoie une requete d'etat a chaque interrupteur et volet configure au chargement de l'integration, pour que leur etat soit confirme quelques secondes apres un redemarrage (une bascule au lieu des deux boutons on/off). Cela transmet une fois par appareil a chaque rechargement.\n\nLe mode repeteur fait repeter par le transceiver USB les telegrammes qu'il entend (niveau 1 : telegrammes recus directement ; niveau 2 : aussi ceux deja repetes une fois). Le module l'oublie a la coupure, le reglage est donc ecrit dans le module a chaque chargement et reconnexion. C'est un reglage local du module, pas une transmission radio.",
         "data": {
-          "query_on_startup": "Interroger l'etat au demarrage"
+          "query_on_startup": "Interroger l'etat au demarrage",
+          "repeater": "Mode repeteur"
+        }
+      },
+      "base_id": {
+        "title": "Base ID du transceiver",
+        "description": "Base ID actuel : {base_id}. Cycles d'ecriture restants annonces par le module : {remaining}.\n\nA utiliser uniquement pour restaurer un Base ID exporte sur un transceiver de REMPLACEMENT, afin que les actionneurs appaires avec l'ancienne cle continuent de repondre. Chaque ecriture consomme un des cycles d'ecriture du module (10 en sortie d'usine) et ne peut pas etre annulee.",
+        "data": {
+          "new_base_id": "Nouveau Base ID (8 chiffres hexadecimaux, FF800000 a FFFFFF80)"
+        }
+      },
+      "base_id_confirm": {
+        "title": "Confirmer l'ecriture du Base ID",
+        "description": "ATTENTION. Ceci ecrit definitivement {new_base_id} dans le transceiver, a la place de {base_id}. Cela consomme un des {remaining} cycles d'ecriture restants ; une fois epuises, le Base ID ne pourra plus jamais etre change. Les sender ID configures hors de {new_base_id} a +127 cesseront de fonctionner. Saisissez de nouveau le nouveau Base ID pour confirmer.",
+        "data": {
+          "confirm_base_id": "Repetez le nouveau Base ID"
         }
       },
       "remove_confirm": {
@@ -198,7 +214,17 @@
       "import_invalid": "Le document a ete rejete ; rien n'a ete enregistre. Voir les details ci-dessus.",
       "not_eurid": "Ceci est une adresse d'emetteur/base, pas une adresse d'appareil (les EURID d'appareil se terminent a FF7FFFFF).",
       "not_acknowledged": "Le transceiver n'a pas acquitte la transmission. Rien n'a peut-etre ete ecrit ; verifiez le module et reessayez.",
-      "cannot_send": "La commande n'a pas pu etre envoyee (transceiver deconnecte ou sender invalide). Verifiez la passerelle et reessayez."
+      "cannot_send": "La commande n'a pas pu etre envoyee (transceiver deconnecte ou sender invalide). Verifiez la passerelle et reessayez.",
+      "invalid_base_id": "Saisissez le Base ID sous forme de 8 chiffres hexadecimaux.",
+      "base_id_out_of_range": "Un Base ID doit etre compris entre FF800000 et FFFFFF80.",
+      "base_id_unchanged": "C'est deja le Base ID du transceiver ; rien a ecrire.",
+      "confirm_mismatch": "La valeur repetee ne correspond pas au nouveau Base ID. Rien n'a ete ecrit.",
+      "base_id_not_supported": "Le module ne permet pas de changer son Base ID. Rien n'a ete ecrit.",
+      "base_id_max_reached": "Le module a epuise ses cycles d'ecriture du Base ID ; il ne peut plus etre change.",
+      "base_id_not_written": "Le module a acquitte la commande mais annonce toujours l'ancien Base ID. Rien n'a change ; ne reessayez pas a l'aveugle, chaque tentative peut consommer un cycle d'ecriture.",
+      "base_id_mismatch_after_write": "Apres l'ecriture, le module annonce un Base ID qui n'est ni l'ancien ni le nouveau. Debranchez et rebranchez le transceiver et verifiez son Base ID avant toute autre action.",
+      "base_id_failed": "Le module a refuse l'ecriture du Base ID. Consultez les journaux pour le code d'erreur retourne.",
+      "not_connected": "La passerelle EnOcean n'est pas connectee ; rien n'a ete ecrit."
     },
     "abort": {
       "inbox_empty": "Aucun emetteur non configure n'a encore ete entendu.",
@@ -211,7 +237,8 @@
       "pair_unsupported_eep": "L'appareil a annonce un profil non pris en charge par cette integration. Consultez la boite de reception radio pour voir l'EEP declare.",
       "pair_receive_only": "Cet appareil est en reception seule et n'a pas besoin d'appairage. Ajoutez-le depuis sa carte de decouverte ou la boite de reception radio.",
       "no_actuators": "Aucun actionneur D2-01 n'est configure.",
-      "params_sent": "Parametres transmis et acquittes par le transceiver. Verifiez que le module se comporte comme configure (bouton local, etat apres coupure)."
+      "params_sent": "Parametres transmis et acquittes par le transceiver. Verifiez que le module se comporte comme configure (bouton local, etat apres coupure).",
+      "base_id_changed": "Base ID ecrit : le transceiver annonce maintenant {base_id}. La passerelle se recharge avec le nouveau Base ID ; mettez a jour l'export de sauvegarde ensuite."
     },
     "progress": {
       "pair_waiting_any": "Appuyez maintenant sur le bouton teach-in (LRN) de l'appareil. La passerelle repondra au premier teach-in entendu avec un sender ID nouvellement attribue."
@@ -223,6 +250,13 @@
         "off": "Eteint (0%)",
         "on": "Allume (100%)",
         "previous": "Memoriser l'etat precedent"
+      }
+    },
+    "repeater": {
+      "options": {
+        "off": "Desactive",
+        "level_1": "Niveau 1 (repete les telegrammes entendus directement)",
+        "level_2": "Niveau 2 (repete aussi les telegrammes deja repetes une fois)"
       }
     }
   },

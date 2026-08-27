@@ -25,9 +25,11 @@ from enocean_async import (
 from enocean_async.eep import EEP_SPECIFICATIONS
 from enocean_async.eep.handler import EEPHandler
 from enocean_async.eep.message import EEPMessageType, RawEEPMessage
+from enocean_async.gateway import BaseIDChangeError
 from enocean_async.protocol.erp1.fourbs import FourBSTeachInTelegram
 from enocean_async.protocol.erp1.rorg import RORG
 from enocean_async.protocol.erp1.ute import UTEMessage
+from enocean_async.protocol.esp3.common_command import CommonCommandTelegram
 from enocean_async.protocol.esp3.response import ResponseCode
 from enocean_async.semantics.entity import EntityCategory, EntityType
 from enocean_async.semantics.instruction import Instruction
@@ -57,6 +59,7 @@ from .const import (
     CONF_BASE_ID,
     CONF_DEVICE_PATH,
     CONF_DEVICES,
+    CONF_REPEATER,
     DOMAIN,
     EEP_BATTERY_FLAG,
     EEP_CHANNEL_COUNT,
@@ -104,6 +107,41 @@ class PairingError(Exception):
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
         self.reason = reason
+
+
+class BaseIDError(Exception):
+    """Base ID write failed; reason is a translation key for the flow."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+# ESP3 common command CO_WR_REPEATER (spec 1.10.9): REP_ENABLE, REP_LEVEL.
+CO_WR_REPEATER = 0x09
+_REPEATER_BYTES = {
+    "off": (0x00, 0x00),
+    "level_1": (0x01, 0x01),
+    "level_2": (0x01, 0x02),
+}
+
+
+def _base_id_reason(message: str) -> str:
+    """Map the library's BaseIDChangeError to a flow error key. The exception
+    carries no code, only wording; pinned to enocean-async 0.16.0 and covered
+    by tests for every branch, so a wording change fails loudly there."""
+    lowered = message.lower()
+    if "not supported" in lowered:
+        return "base_id_not_supported"
+    if "out of allowed range" in lowered:
+        return "base_id_out_of_range"
+    if "maximum number" in lowered:
+        return "base_id_max_reached"
+    if "still the same" in lowered:
+        return "base_id_not_written"
+    if "different base id" in lowered:
+        return "base_id_mismatch_after_write"
+    return "base_id_failed"
 
 
 @dataclass
@@ -232,6 +270,18 @@ class EnOceanHub:
                 )
             except ValueError as err:
                 _LOGGER.error("Could not register device %s: %s", record.address, err)
+
+        if (mode := self.entry.options.get(CONF_REPEATER)) is not None:
+            await self._async_apply_repeater(mode)
+
+    @property
+    def base_id_remaining_write_cycles(self) -> int | None:
+        """Lifetime CO_WR_IDBASE writes the module reports as still available."""
+        return (
+            self.gateway.base_id_remaining_write_cycles
+            if self.gateway is not None
+            else None
+        )
 
     async def async_stop(self) -> None:
         """Close the serial connection. Safe to call more than once."""
@@ -529,6 +579,13 @@ class EnOceanHub:
         )
         if connected:
             ir.async_delete_issue(self.hass, DOMAIN, ISSUE_SERIAL_DISCONNECTED)
+            # A replugged module has lost its volatile repeater setting.
+            if (mode := self.entry.options.get(CONF_REPEATER)) is not None:
+                self.entry.async_create_background_task(
+                    self.hass,
+                    self._async_apply_repeater(mode),
+                    "enocean_direct_repeater",
+                )
         else:
             ir.async_create_issue(
                 self.hass,
@@ -692,6 +749,70 @@ class EnOceanHub:
         result = await gateway.send_esp3_packet(erp1.to_esp3())
         response = result.response
         return response is not None and response.return_code == ResponseCode.OK
+
+    # ------------------------------------------------------------------
+    # transceiver management (ESP3 common commands: local module writes,
+    # nothing is transmitted over the air)
+    # ------------------------------------------------------------------
+    async def async_set_repeater(self, mode: str) -> bool:
+        """Send CO_WR_REPEATER. Returns True if the module answered RET_OK."""
+        gateway = self.gateway
+        if gateway is None or not self.connected:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN, translation_key="not_connected"
+            )
+        enable, level = _REPEATER_BYTES[mode]
+        command = CommonCommandTelegram(
+            common_command_code=CO_WR_REPEATER,
+            common_command_data=bytes([enable, level]),
+        )
+        result = await gateway.send_esp3_packet(command.to_esp3_packet())
+        response = result.response
+        if response is None:
+            _LOGGER.warning("Repeater mode %s: no response from the module", mode)
+            return False
+        if response.return_code != ResponseCode.OK:
+            _LOGGER.warning(
+                "Repeater mode %s rejected by the module: %s",
+                mode,
+                response.return_code.name,
+            )
+            return False
+        return True
+
+    async def _async_apply_repeater(self, mode: str) -> None:
+        """Re-apply the stored repeater mode; never fatal for the entry."""
+        if self._stopped:
+            return
+        if mode not in _REPEATER_BYTES:
+            # Only reachable from a hand-edited entry or a renamed mode; a bad
+            # option value must not stop the gateway from loading.
+            _LOGGER.warning("Unknown repeater mode %r in options; not applied", mode)
+            return
+        try:
+            await self.async_set_repeater(mode)
+        except HomeAssistantError as err:
+            _LOGGER.warning("Repeater mode %s not applied: %s", mode, err)
+
+    async def async_change_base_id(self, new_base_id: str) -> None:
+        """Write a new Base ID (CO_WR_IDBASE) through the library, which
+        re-reads it afterwards to prove the write took. Burns one of the
+        module's lifetime write cycles; the flow confirms twice before this."""
+        gateway = self.gateway
+        if gateway is None or not self.connected:
+            raise BaseIDError("not_connected")
+        try:
+            await gateway.change_base_id(
+                BaseAddress(int(new_base_id, 16)), safety_flag=0x7B
+            )
+        except BaseIDChangeError as err:
+            raise BaseIDError(_base_id_reason(str(err))) from err
+        except ValueError as err:
+            # same as the current Base ID (the form checks this first)
+            raise BaseIDError("base_id_unchanged") from err
+        except ConnectionError as err:
+            raise BaseIDError("not_connected") from err
+        self.base_id = new_base_id
 
     # ------------------------------------------------------------------
     # guided pairing (one device, one time-bounded learning window)

@@ -18,6 +18,11 @@ CONF_BASE_ID = "base_id"
 CONF_DEVICES = "devices"
 # Hub-wide opt-in: query actuator/cover status once after the entry loads.
 CONF_QUERY_STARTUP = "query_on_startup"
+# Transceiver repeater mode (ESP3 CO_WR_REPEATER, a local module write, no
+# radio). The USB300 forgets it on power loss, so it is re-applied on every
+# load and reconnect. Absent key = never touched.
+CONF_REPEATER = "repeater"
+REPEATER_MODES = ("off", "level_1", "level_2")
 
 KEY_ADDRESS = "address"
 KEY_EEP = "eep"

@@ -90,6 +90,16 @@ class FakeDongle:
         self.respond_to_radio = True
         self.radio_return_code = 0x00  # RET_OK
         self.sent_radio: list[tuple[bytes, bytes]] = []  # (data, optional)
+        # Module state touched by common commands (local writes, no radio).
+        self.base_id = BASE_ID
+        self.base_id_writes_remaining = 10
+        self.base_id_writes: list[int] = []  # CO_WR_IDBASE values received
+        self.ignore_base_id_write = False  # answer OK but keep the old Base ID
+        # Answer OK but land on a third value (firmware bug / crossed wires).
+        self.base_id_write_result: int | None = None
+        self.repeater_writes: list[tuple[int, int]] = []  # (REP_ENABLE, REP_LEVEL)
+        # Force a return code for a common command code (e.g. {0x07: 0x91}).
+        self.common_return_codes: dict[int, int] = {}
 
     async def create(self, loop, protocol_factory, port, baudrate=57600, **kwargs):
         if self.fail_connect:
@@ -122,9 +132,29 @@ class FakeDongle:
         if packet_type == 0x05:  # COMMON_COMMAND
             if not self.respond_to_common:
                 return
-            if payload[0] == 0x08:  # CO_RD_IDBASE
-                self.reply(bytes([0x00]) + BASE_ID.to_bytes(4, "big"), b"\x0a")
-            elif payload[0] == 0x03:  # CO_RD_VERSION
+            code = payload[0]
+            if (forced := self.common_return_codes.get(code)) is not None:
+                self.reply(bytes([forced]))
+            elif code == 0x08:  # CO_RD_IDBASE (+ remaining write cycles)
+                self.reply(
+                    bytes([0x00]) + self.base_id.to_bytes(4, "big"),
+                    bytes([self.base_id_writes_remaining]),
+                )
+            elif code == 0x07:  # CO_WR_IDBASE
+                new_base = int.from_bytes(payload[1:5], "big")
+                self.base_id_writes.append(new_base)
+                if not self.ignore_base_id_write:
+                    self.base_id = (
+                        new_base
+                        if self.base_id_write_result is None
+                        else self.base_id_write_result
+                    )
+                    self.base_id_writes_remaining -= 1
+                self.reply(bytes([0x00]))
+            elif code == 0x09:  # CO_WR_REPEATER
+                self.repeater_writes.append((payload[1], payload[2]))
+                self.reply(bytes([0x00]))
+            elif code == 0x03:  # CO_RD_VERSION
                 data = (
                     bytes([0x00])  # RET_OK
                     + bytes([1, 0, 0, 0])  # app version
@@ -135,6 +165,8 @@ class FakeDongle:
                     + b"FAKE USB 300".ljust(16, b"\x00")
                 )
                 self.reply(data)
+            else:
+                self.reply(bytes([0x02]))  # RET_NOT_SUPPORTED, like a real module
         elif packet_type == 0x01:  # RADIO_ERP1
             self.sent_radio.append((bytes(payload), bytes(optional)))
             if self.respond_to_radio:

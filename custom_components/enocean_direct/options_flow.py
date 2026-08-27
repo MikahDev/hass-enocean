@@ -26,6 +26,7 @@ from .const import (
     CONF_BASE_ID,
     CONF_DEVICES,
     CONF_QUERY_STARTUP,
+    CONF_REPEATER,
     DOMAIN,
     EEP_ACTUATORS,
     EEP_CHANNEL_COUNT,
@@ -38,6 +39,7 @@ from .const import (
     KEY_INVERT,
     KEY_NAME,
     KEY_SENDER_ID,
+    REPEATER_MODES,
     SUPPORTED_EEPS,
 )
 from .models import (
@@ -65,6 +67,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
         self._pair_task: asyncio.Task | None = None
         self._pair_error: str | None = None
         self._params_address: str | None = None
+        self._new_base_id: str | None = None
 
     # ------------------------------------------------------------------
     # helpers
@@ -102,6 +105,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                 "module_params",
                 "manage",
                 "settings",
+                "base_id",
                 "import_devices",
                 "export_devices",
             ],
@@ -115,6 +119,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                 data={
                     **self.config_entry.options,
                     CONF_QUERY_STARTUP: user_input[CONF_QUERY_STARTUP],
+                    CONF_REPEATER: user_input[CONF_REPEATER],
                 }
             )
         return self.async_show_form(
@@ -127,8 +132,109 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
                             CONF_QUERY_STARTUP, False
                         ),
                     ): bool,
+                    vol.Required(
+                        CONF_REPEATER,
+                        default=self.config_entry.options.get(CONF_REPEATER, "off"),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=list(REPEATER_MODES),
+                            mode=SelectSelectorMode.DROPDOWN,
+                            translation_key="repeater",
+                        )
+                    ),
                 }
             ),
+        )
+
+    # ------------------------------------------------------------------
+    # Base ID recovery: write an exported Base ID onto a replacement stick.
+    # Two steps (value, then retype) because the module allows 10 writes ever.
+    # ------------------------------------------------------------------
+    async def async_step_base_id(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        hub = getattr(self.config_entry, "runtime_data", None)
+        if hub is None or hub.gateway is None:
+            return self.async_abort(reason="not_loaded")
+        if not hub.connected or hub.base_id is None:
+            return self.async_abort(reason="not_connected")
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                new_base_id = normalize_address(user_input["new_base_id"])
+            except AddressError:
+                errors["new_base_id"] = "invalid_base_id"
+            else:
+                if not 0xFF800000 <= int(new_base_id, 16) <= 0xFFFFFF80:
+                    errors["new_base_id"] = "base_id_out_of_range"
+                elif new_base_id == hub.base_id:
+                    errors["new_base_id"] = "base_id_unchanged"
+            if not errors:
+                self._new_base_id = new_base_id
+                return await self.async_step_base_id_confirm()
+        remaining = hub.base_id_remaining_write_cycles
+        return self.async_show_form(
+            step_id="base_id",
+            data_schema=vol.Schema({vol.Required("new_base_id"): TextSelector()}),
+            errors=errors,
+            description_placeholders={
+                "base_id": hub.base_id,
+                "remaining": "unknown" if remaining is None else str(remaining),
+            },
+        )
+
+    async def async_step_base_id_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        from .gateway import BaseIDError
+
+        hub = getattr(self.config_entry, "runtime_data", None)
+        if hub is None or hub.gateway is None:
+            return self.async_abort(reason="not_loaded")
+        if not hub.connected or hub.base_id is None:
+            return self.async_abort(reason="not_connected")
+        assert self._new_base_id is not None
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                retyped = normalize_address(user_input["confirm_base_id"])
+            except AddressError:
+                retyped = None
+            if retyped != self._new_base_id:
+                errors["confirm_base_id"] = "confirm_mismatch"
+            else:
+                try:
+                    await hub.async_change_base_id(self._new_base_id)
+                except BaseIDError as err:
+                    errors["base"] = err.reason
+                else:
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry,
+                        data={
+                            **self.config_entry.data,
+                            CONF_BASE_ID: self._new_base_id,
+                        },
+                        title=f"EnOcean gateway {self._new_base_id}",
+                    )
+                    # Options are unchanged, so OptionsFlowWithReload would
+                    # not reload; the hub must restart on the new Base ID.
+                    self.hass.config_entries.async_schedule_reload(
+                        self.config_entry.entry_id
+                    )
+                    return self.async_abort(
+                        reason="base_id_changed",
+                        description_placeholders={"base_id": self._new_base_id},
+                    )
+        remaining = hub.base_id_remaining_write_cycles
+        return self.async_show_form(
+            step_id="base_id_confirm",
+            data_schema=vol.Schema({vol.Required("confirm_base_id"): TextSelector()}),
+            errors=errors,
+            description_placeholders={
+                "base_id": hub.base_id,
+                "new_base_id": self._new_base_id,
+                "remaining": "unknown" if remaining is None else str(remaining),
+            },
         )
 
     # ------------------------------------------------------------------

@@ -76,6 +76,7 @@
           "module_params": "Configure actuator parameters",
           "manage": "Manage configured devices",
           "settings": "Gateway settings",
+          "base_id": "Transceiver Base ID (recovery)",
           "import_devices": "Import an inventory",
           "export_devices": "Export a backup"
         }
@@ -165,9 +166,24 @@
       },
       "settings": {
         "title": "Gateway settings",
-        "description": "Query status on startup sends one status query to every configured switch and cover when the integration loads, so their state is confirmed within seconds after a restart (a toggle instead of the two on/off buttons). This transmits once per device per reload.",
+        "description": "Query status on startup sends one status query to every configured switch and cover when the integration loads, so their state is confirmed within seconds after a restart (a toggle instead of the two on/off buttons). This transmits once per device per reload.\n\nRepeater mode makes the USB transceiver repeat telegrams it hears (level 1: telegrams received directly; level 2: also telegrams already repeated once). The module forgets it on power loss, so the setting is written to the module on every load and reconnect. It is a local module setting, not a radio transmission.",
         "data": {
-          "query_on_startup": "Query status on startup"
+          "query_on_startup": "Query status on startup",
+          "repeater": "Repeater mode"
+        }
+      },
+      "base_id": {
+        "title": "Transceiver Base ID",
+        "description": "Current Base ID: {base_id}. Remaining lifetime write cycles reported by the module: {remaining}.\n\nUse this only to restore an exported Base ID onto a REPLACEMENT transceiver, so actuators paired with the old stick keep answering. Every write consumes one of the module's write cycles (10 from the factory) and cannot be undone.",
+        "data": {
+          "new_base_id": "New Base ID (8 hex digits, FF800000 to FFFFFF80)"
+        }
+      },
+      "base_id_confirm": {
+        "title": "Confirm Base ID write",
+        "description": "WARNING. This permanently writes {new_base_id} into the transceiver, replacing {base_id}. It consumes one of the {remaining} remaining write cycles; once they are exhausted the Base ID can never be changed again. Configured sender IDs outside {new_base_id} to +127 will stop working. Type the new Base ID again to confirm.",
+        "data": {
+          "confirm_base_id": "Repeat the new Base ID"
         }
       },
       "remove_confirm": {
@@ -198,7 +214,17 @@
       "import_invalid": "The document was rejected; nothing was saved. See the details above.",
       "not_eurid": "This is a sender/base address, not a device address (device EURIDs end at FF7FFFFF).",
       "not_acknowledged": "The transceiver did not acknowledge the transmission. Nothing may have been written; check the module and try again.",
-      "cannot_send": "The command could not be sent (transceiver disconnected or sender invalid). Check the gateway and try again."
+      "cannot_send": "The command could not be sent (transceiver disconnected or sender invalid). Check the gateway and try again.",
+      "invalid_base_id": "Enter the Base ID as 8 hexadecimal digits.",
+      "base_id_out_of_range": "A Base ID must lie between FF800000 and FFFFFF80.",
+      "base_id_unchanged": "This is already the transceiver's Base ID; nothing to write.",
+      "confirm_mismatch": "The repeated value does not match the new Base ID. Nothing was written.",
+      "base_id_not_supported": "The module does not support changing its Base ID. Nothing was written.",
+      "base_id_max_reached": "The module has used all of its Base ID write cycles; the Base ID cannot be changed anymore.",
+      "base_id_not_written": "The module acknowledged the command but still reports the old Base ID. Nothing changed; do not retry blindly, each attempt may consume a write cycle.",
+      "base_id_mismatch_after_write": "After the write the module reports a Base ID that is neither the old nor the new one. Unplug and replug the transceiver and check its Base ID before doing anything else.",
+      "base_id_failed": "The module rejected the Base ID write. Check the logs for the returned error code.",
+      "not_connected": "The EnOcean gateway is not connected; nothing was written."
     },
     "abort": {
       "inbox_empty": "No unconfigured senders have been heard yet.",
@@ -211,7 +237,8 @@
       "pair_unsupported_eep": "The device announced a profile this integration does not support. See the radio inbox for the declared EEP.",
       "pair_receive_only": "This device is receive-only and needs no pairing. Add it from its discovery card or the radio inbox.",
       "no_actuators": "No D2-01 actuator is configured.",
-      "params_sent": "Parameters transmitted and acknowledged by the transceiver. Verify the module behaves as configured (local button, power-failure state)."
+      "params_sent": "Parameters transmitted and acknowledged by the transceiver. Verify the module behaves as configured (local button, power-failure state).",
+      "base_id_changed": "Base ID written: the transceiver now reports {base_id}. The gateway is reloading with the new Base ID; update the device backup export afterwards."
     },
     "progress": {
       "pair_waiting_any": "Press the teach-in (LRN) button on the device now. The gateway will answer the first teach-in it hears with a freshly allocated sender ID."
@@ -223,6 +250,13 @@
         "off": "Off (0%)",
         "on": "On (100%)",
         "previous": "Remember previous state"
+      }
+    },
+    "repeater": {
+      "options": {
+        "off": "Off",
+        "level_1": "Level 1 (repeat telegrams heard directly)",
+        "level_2": "Level 2 (also repeat once-repeated telegrams)"
       }
     }
   },
