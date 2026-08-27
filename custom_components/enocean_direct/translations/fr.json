@@ -152,7 +152,7 @@
       },
       "edit_device": {
         "title": "Modifier l'appareil",
-        "description": "{name} ({address}, {eep}). L'adresse et le profil sont l'identite de l'appareil et ne changent pas ; les entites conservent leurs identifiants. Effacer la piece retire l'appareil de sa piece. Pour les appareils emetteurs, le sender ID doit rester dans la plage du Base ID du transceiver ({base_id} a +127).",
+        "description": "{name} ({address}, {eep}). L'adresse et le profil sont l'identite de l'appareil et ne changent pas ; les entites conservent leurs identifiants. Effacer la piece retire l'appareil de sa piece. Pour les appareils emetteurs, le sender ID doit rester dans la plage du Base ID du transceiver ({base_id} a +127) ; ne le changez que pour un sender que l'appareil a reellement appris, car un actionneur ignore les commandes d'un sender qu'il ne connait pas.",
         "data": {
           "name": "Nom",
           "area_id": "Piece",

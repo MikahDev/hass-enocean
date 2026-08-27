@@ -579,13 +579,9 @@ class EnOceanHub:
         )
         if connected:
             ir.async_delete_issue(self.hass, DOMAIN, ISSUE_SERIAL_DISCONNECTED)
-            # A replugged module has lost its volatile repeater setting.
-            if (mode := self.entry.options.get(CONF_REPEATER)) is not None:
-                self.entry.async_create_background_task(
-                    self.hass,
-                    self._async_apply_repeater(mode),
-                    "enocean_direct_repeater",
-                )
+            self.entry.async_create_background_task(
+                self.hass, self._async_on_reconnect(), "enocean_direct_reconnect"
+            )
         else:
             ir.async_create_issue(
                 self.hass,
@@ -780,6 +776,56 @@ class EnOceanHub:
             return False
         return True
 
+    async def _async_read_module_base_id(self) -> str | None:
+        """Read the Base ID straight from the module (CO_RD_IDBASE).
+
+        The library caches the Base ID for the lifetime of its Gateway object
+        and does not re-read it when it reconnects, so asking the module is the
+        only way to notice that a different transceiver is on the port now.
+        """
+        gateway = self.gateway
+        if gateway is None:
+            return None
+        result = await gateway.send_esp3_packet(
+            CommonCommandTelegram.CO_RD_IDBASE().to_esp3_packet()
+        )
+        response = result.response
+        if (
+            response is None
+            or response.return_code != ResponseCode.OK
+            or len(response.response_data) < 4
+        ):
+            _LOGGER.debug("Base ID re-read after reconnect got no usable answer")
+            return None
+        return f"{int.from_bytes(response.response_data[:4], 'big'):08X}"
+
+    async def _async_on_reconnect(self) -> None:
+        """After the library reconnects, check we still have the same
+        transceiver, then re-apply the settings the module loses on power."""
+        if self._stopped:
+            return
+        base_id = await self._async_read_module_base_id()
+        if base_id is not None and base_id != self.base_id:
+            # A replacement stick on the same port. Every cached value the
+            # library holds (Base ID, remaining write cycles, chip version)
+            # belongs to the old one, so restart the entry: a fresh Gateway
+            # reads the real ones, and the Base ID recovery step can then
+            # restore the exported Base ID onto this module.
+            _LOGGER.warning(
+                "Transceiver on %s now reports Base ID %s instead of %s; "
+                "reloading the entry",
+                self.port,
+                base_id,
+                self.base_id,
+            )
+            self.hass.config_entries.async_update_entry(
+                self.entry, data={**self.entry.data, CONF_BASE_ID: base_id}
+            )
+            self.hass.config_entries.async_schedule_reload(self.entry.entry_id)
+            return
+        if (mode := self.entry.options.get(CONF_REPEATER)) is not None:
+            await self._async_apply_repeater(mode)
+
     async def _async_apply_repeater(self, mode: str) -> None:
         """Re-apply the stored repeater mode; never fatal for the entry."""
         if self._stopped:
@@ -806,6 +852,9 @@ class EnOceanHub:
                 BaseAddress(int(new_base_id, 16)), safety_flag=0x7B
             )
         except BaseIDChangeError as err:
+            # The reason keys below are user-facing; the module's own wording
+            # (and error code) only exists here, so log it before mapping.
+            _LOGGER.warning("Base ID change failed: %s", err)
             raise BaseIDError(_base_id_reason(str(err))) from err
         except ValueError as err:
             # same as the current Base ID (the form checks this first)

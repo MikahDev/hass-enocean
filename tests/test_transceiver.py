@@ -22,6 +22,7 @@ from custom_components.enocean_direct.const import (
 
 from .conftest import (
     ACTUATOR,
+    BASE_ID,
     BASE_ID_HEX,
     CONTACT,
     PORT,
@@ -317,3 +318,60 @@ async def test_unknown_repeater_mode_does_not_break_setup(
     assert "Unknown repeater mode" in caplog.text
     assert dongle.repeater_writes == []
     assert hass.states.get("binary_sensor.test_contact") is not None
+
+
+async def test_replacement_transceiver_reloads_with_its_own_base_id(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """A dead stick swapped for a new one on the same port: the library keeps
+    its cached Base ID, so the hub re-reads it from the module, records the
+    real one and restarts the entry. Without that, the recovery step below
+    would offer the dead stick's Base ID and refuse to restore it."""
+    entry = make_entry(hass, [CONTACT])
+    assert await setup_entry(hass, entry)
+    dongle.unplug()
+    await hass.async_block_till_done()
+    dongle.base_id = 0xFF800000  # replacement stick, factory Base ID
+    dongle.base_id_writes_remaining = 3
+    await asyncio.sleep(2.2)  # library reconnect backoff
+    await hass.async_block_till_done()
+
+    assert entry.data[CONF_BASE_ID] == "FF800000"
+    hub = entry.runtime_data
+    assert hub.base_id == "FF800000"
+    assert hub.base_id_remaining_write_cycles == 3
+
+    # the workflow the feature exists for: restore the exported Base ID
+    result = await _menu(hass, entry, "base_id")
+    assert result["description_placeholders"] == {
+        "base_id": "FF800000",
+        "remaining": "3",
+    }
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"new_base_id": BASE_ID_HEX}
+    )
+    assert result["step_id"] == "base_id_confirm"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"confirm_base_id": BASE_ID_HEX}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "base_id_changed"
+    assert dongle.base_id_writes == [BASE_ID]
+    await hass.async_block_till_done()
+    assert entry.data[CONF_BASE_ID] == BASE_ID_HEX
+
+
+async def test_same_transceiver_reconnect_does_not_reload(
+    hass: HomeAssistant, dongle: FakeDongle
+) -> None:
+    """The identity check must not restart the entry on an ordinary replug of
+    the same stick (that would drop entity state on every USB glitch)."""
+    entry = make_entry(hass, [CONTACT])
+    assert await setup_entry(hass, entry)
+    dongle.unplug()
+    await hass.async_block_till_done()
+    await asyncio.sleep(2.2)
+    await hass.async_block_till_done()
+    assert dongle.connect_count == 2  # reconnect only, no reload on top
+    assert entry.data[CONF_BASE_ID] == BASE_ID_HEX
+    assert entry.runtime_data.base_id == BASE_ID_HEX

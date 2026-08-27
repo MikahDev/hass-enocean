@@ -83,18 +83,23 @@ ordered roughly by value; nothing here is committed to a date.
   from the F6 press/release timing the integration already receives (no new
   TX). Fixed timing windows. Not shipped: the hold-to-dim blueprint; the
   held / released_after_hold pair is enough to write one per light.
-- [ ] **Per-device command inversion**: an invert option for actuators wired
-  backwards - cover direction/position first (open and close swapped),
-  optionally switch on/off. Stored on the DeviceRecord, editable via
-  edit-in-place below. Deliberately NOT offered for the D5-00-01 contact:
-  that polarity is spec-verified and stays fixed.
+- [x] **Per-device command inversion** (v0.15.0, covers): an "Invert
+  direction" toggle in the edit form for a D2-05 unit wired backwards: open
+  and close commands are swapped and the position is mirrored on both the
+  TX and RX paths. Stored as an optional `invert` field on the DeviceRecord,
+  carried by import/export, and accepted by validation for covers only.
+  Deliberately NOT offered for the D5-00-01 contact (spec-verified polarity)
+  nor, yet, for switches (no demand; add when a backwards relay shows up).
 - [ ] **Human-readable EEP names**: the add-manually dropdown now lists ~90
   raw EEP codes with no hint what they are. Label every EEP selector,
   discovery card title and manage/inbox list with the library's profile
   name (e.g. "A5-04-01 - Temperature and humidity sensor").
-- [ ] **Edit devices in place**: manage currently only removes. Allow
-  renaming and changing the room (and the sender/channel for actuators)
-  without remove/re-add, keeping the entity registry intact.
+- [x] **Edit devices in place** (v0.15.0): Manage now opens a per-device
+  menu (edit / remove). The edit form changes name and room for every
+  device, sender ID and channel for transmitting ones, and direction
+  inversion for covers, keeping the entity registry intact (address and
+  EEP are the identity and stay fixed). A rename clears a UI rename
+  (name_by_user) so the typed name is what shows.
 - [ ] **Show the manufacturer on the device page**: UTE and 4BS teach-ins
   carry a manufacturer ID the library resolves; store it at discovery/
   pairing time and set it as the HA device manufacturer instead of the
@@ -112,14 +117,18 @@ ordered roughly by value; nothing here is committed to a date.
   recepteur_*, openHAB classicDevice/centralCommand, FHEM gateway profile).
   Expands the transmission model to F6/A5-38 emulation: needs its own
   design pass and constraint update before implementation.
-- [ ] **Dongle repeater mode**: CO_WR_REPEATER (off / level 1 / level 2) as
-  a Gateway setting; the USB300 setting is volatile so it must be re-applied
-  at every startup - exactly what the settings step is for.
-- [ ] **Base ID disaster recovery**: guided flow to write the exported base
-  ID onto a replacement stick (library `change_base_id` exists, hardware
-  allows 10 writes ever - show `base_id_remaining_write_cycles` first).
-  Completes the export/backup story: today a dead stick orphans every
-  paired actuator.
+- [x] **Dongle repeater mode** (v0.16.0): Gateway settings > Repeater mode
+  (off / level 1 / level 2) sends ESP3 CO_WR_REPEATER, a local module write.
+  The USB300 setting is volatile, so it is re-applied on every load and on
+  every reconnect after a replug. A module that rejects it logs a warning
+  and the entry loads anyway.
+- [x] **Base ID disaster recovery** (v0.16.0): Configure > Transceiver Base
+  ID (recovery) shows the current Base ID and the module's remaining write
+  cycles, validates the new value, requires it to be typed a second time,
+  then writes it through the library's `change_base_id` (which re-reads the
+  module to prove the write took). Every library failure reason maps to its
+  own error message. Entry data and title follow, and the gateway reloads.
+  Live validation burns one of the 10 lifetime writes: see the runbook.
 - [ ] **Radio filters / RX sensitivity**: CO_WR_FILTER_* to drop weak or
   foreign telegrams in the chip (dense-apartment inbox clutter).
 - [ ] **Hop-count diagnostics**: expose `repeater_count` (heard direct vs

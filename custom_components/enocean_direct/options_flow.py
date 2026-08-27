@@ -179,7 +179,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             errors=errors,
             description_placeholders={
                 "base_id": hub.base_id,
-                "remaining": "unknown" if remaining is None else str(remaining),
+                "remaining": "?" if remaining is None else str(remaining),
             },
         )
 
@@ -233,7 +233,7 @@ class EnOceanOptionsFlow(OptionsFlowWithReload):
             description_placeholders={
                 "base_id": hub.base_id,
                 "new_base_id": self._new_base_id,
-                "remaining": "unknown" if remaining is None else str(remaining),
+                "remaining": "?" if remaining is None else str(remaining),
             },
         )
 

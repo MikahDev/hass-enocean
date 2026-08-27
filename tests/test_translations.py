@@ -41,3 +41,24 @@ def test_translations_cover_flow_strings() -> None:
         "exceptions.command_not_acknowledged.message",
     ):
         assert required in keys, required
+
+
+def test_placeholder_parity_between_languages() -> None:
+    """A {placeholder} dropped or renamed in a translation renders as literal
+    text (or raises) at runtime, which key parity alone does not catch."""
+    import re
+
+    english = json.loads((BASE / "translations/en.json").read_text())
+    french = json.loads((BASE / "translations/fr.json").read_text())
+
+    def walk(node: dict, other: dict, path: str = "") -> None:
+        for key, value in node.items():
+            where = f"{path}.{key}" if path else key
+            if isinstance(value, dict):
+                walk(value, other.get(key, {}), where)
+            elif isinstance(value, str) and isinstance(other.get(key), str):
+                assert set(re.findall(r"\{(\w+)\}", value)) == set(
+                    re.findall(r"\{(\w+)\}", other[key])
+                ), where
+
+    walk(english, french)

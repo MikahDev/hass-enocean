@@ -152,7 +152,7 @@
       },
       "edit_device": {
         "title": "Edit device",
-        "description": "{name} ({address}, {eep}). The address and profile are the device's identity and cannot change; entities keep their IDs. Clearing the room removes the device from its room. For transmitting devices the sender ID must stay within the transceiver Base ID range ({base_id} to +127).",
+        "description": "{name} ({address}, {eep}). The address and profile are the device's identity and cannot change; entities keep their IDs. Clearing the room removes the device from its room. For transmitting devices the sender ID must stay within the transceiver Base ID range ({base_id} to +127); only change it to a sender the device has actually been taught, because an actuator ignores commands from a sender it does not know.",
         "data": {
           "name": "Name",
           "area_id": "Room",

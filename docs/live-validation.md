@@ -134,6 +134,49 @@ G2. D2-20-02 fan (if fitted): set 50%, then off, then Auto, observing the
     unit's own status messages (Auto shows as a preset without a
     percentage until the unit reports a numeric speed).
 
+## Phase H - v0.14.0..v0.16.0: gestures, inversion, transceiver settings
+
+H1. Rocker gestures (receive-only, no approval gate). On the configured F6
+    rocker: hold AO for about a second, then release; tap AO twice quickly.
+    Pass: the device page's trigger log (or a test automation) shows
+    pressed / held / released / released after hold for the hold, and
+    pressed / released / pressed / double pressed / released for the double
+    tap. A `held` that fires on a short tap, or a `double pressed` on two
+    taps more than a second apart, is a FAIL.
+H2. Cover direction inversion [TX] (only if a D2-05 unit is wired
+    backwards; otherwise skip). Configure > Manage > the cover > Edit >
+    Invert direction. With the blind observed, command Open once.
+    Pass: the blind physically opens and HA settles on a position near 100.
+    Fail: switch inversion back off before anything else.
+H3. Repeater mode (local module write, no radio). Configure > Gateway
+    settings > Repeater mode = Level 1; the entry reloads.
+    Pass: the entry loads and the log shows no "rejected by the module"
+    warning. Unplug and replug the stick: after reconnect the setting is
+    written again (debug log shows a COMMON_COMMAND 0x09 send). Note this
+    only proves the module ACCEPTED the setting; proving it actually repeats
+    needs a device that is out of direct range of the stick but in range of
+    it, which this installation may not have. Repeating makes the stick
+    re-transmit other devices' telegrams, so set it back to Off afterwards
+    unless the installation wants that; Off is also written explicitly.
+H4. Base ID recovery [LIVE, IRREVERSIBLE]. THIS BURNS ONE OF THE MODULE'S
+    ~10 LIFETIME BASE ID WRITES. Do NOT run it on the production stick as a
+    test. Run it only (a) on a spare stick you accept losing a write cycle
+    on, or (b) for a real replacement of a dead stick. Requires separate
+    explicit approval at this step.
+    H4a. Take a fresh device export first (it carries the Base ID to restore).
+    H4b. Configure > Transceiver Base ID (recovery). Confirm the shown
+         current Base ID matches the stick and note the remaining write
+         cycles (a factory stick reports 10).
+    H4c. Enter the Base ID from the export, then type it again on the
+         confirmation step.
+    Pass: the abort message reports the new Base ID; the entry reloads and
+    its title shows the new Base ID; the remaining count dropped by exactly
+    one; paired actuators answer commands from the restored senders (Phase
+    C style single bounded command). Any error message: do NOT retry
+    blindly; each attempt may consume a write cycle. Read the message
+    (not supported / max reached / not written / mismatch after write) and
+    check the stick's Base ID after a replug before deciding anything.
+
 ## Phase D - close-out
 
 D1. If all checks pass: uninstall or leave the MQTT add-on disabled (do not
@@ -148,6 +191,10 @@ D2. If any check fails: stop the enocean_direct entry (disable it), re-enable
 - No teach-in is performed in Phases A-D. The relay keeps its historical
   association with sender FF974100.
 - No telegram is transmitted before Phase C, and Phase C sends only the two
-  bounded switch commands to the validated relay.
+  bounded switch commands to the validated relay. This holds as long as the
+  "Query status on startup" gateway setting stays off (it is off by default);
+  enabling it transmits one status query per switch and cover at every load,
+  so leave it off until Phase C has passed. Repeater mode (Phase H3) must
+  likewise stay off until then: it makes the stick relay telegrams on air.
 - The only teach-in response ever sent is the one in E1: user-initiated,
   focused on the one device being paired, inside a 60 s window.
